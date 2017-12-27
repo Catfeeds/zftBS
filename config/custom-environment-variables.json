@@ -1,0 +1,10 @@
+{
+  "RDS": {
+    "emRead": "MYSQL_EM_READ",
+    "emWrite": "MYSQL_EM_WRITE",
+    "zftRead": "MYSQL_ZFT_READ",
+    "zftWrite": "MYSQL_ZFT_WRITE"
+  },
+  "LOGFILE": "LOGFILE",
+  "MONGODB": "ZFT_MONGO_URL"
+}
