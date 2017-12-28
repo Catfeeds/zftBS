@@ -469,7 +469,7 @@ function SequelizeDefine()
     Houses.belongsTo(Building, {as: 'Building'});
     Building.hasMany(Houses, {as: 'Houses', foreignKey:'buildingId'});
 
-    Houses.hasMany(Rooms, {as: 'Rooms', foreignKey: 'houseId'});
+    Houses.hasMany(Rooms, {as: 'rooms', foreignKey: 'houseId'});
     Rooms.belongsTo(Houses, {as: 'House'});
 
     Houses.hasOne(Layouts, {as: 'Layouts', foreignKey: 'sourceId'});
@@ -507,7 +507,6 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
-
 
     const Contracts = sequelizeInstance.define('contracts', {
         roomId: {
@@ -585,6 +584,8 @@ function SequelizeDefine()
 		paranoid: true,
         freezeTableName: true
     });
+
+    Rooms.hasMany(Contracts, {as: 'contracts', foreignKey:'roomId'});
 
 	const Users = sequelizeInstance.define('users', {
 		accountName: {
@@ -1019,7 +1020,7 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
-    HousesBills.hasMany(HousesBillsFlows);
+    HousesBills.hasMany(HousesBillsFlows, {as: 'billFlows', foreignKey: 'billId'});
 
 
     exports.HousesBills = HousesBills;
