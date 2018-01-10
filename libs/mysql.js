@@ -18,8 +18,8 @@ exports.Literal = (str)=>{
 
 exports.Load = () => {
     return new Promise((resolve, reject)=>{
-        const read = JSON.parse(config.RDS.zftRead);
-        const write = JSON.parse(config.RDS.zftWrite);
+        const read = JSON.parse(config.RDS.read);
+        const write = JSON.parse(config.RDS.write);
 		sequelizeInstance = new Sequelize(null, null, null, {
             dialect: 'mysql',
             replication: {
@@ -1004,6 +1004,10 @@ function SequelizeDefine()
             allowNull: false,
             defaultValue: 0
         },
+        scale: {
+            type: Sequelize.BIGINT,
+            allowNull: false,
+        },
         usage: {
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
@@ -1025,6 +1029,176 @@ function SequelizeDefine()
 
     exports.HousesBills = HousesBills;
     exports.HousesBillsFlows = HousesBillsFlows;
+
+    const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        type:{
+            type: Sequelize.STRING(16),
+            allowNull: false
+        },
+        contractId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.INTEGER,    //单位分
+            allowNull: false,
+            defaultValue: 0
+        },
+        scale: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        usage: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        createdAt:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+
+    const Devices = sequelizeInstance.define('devices', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        name: {
+            type: Sequelize.STRING(32),
+            allowNull: false,
+            defaultValue: '',
+        },
+        tag: {
+            type: Sequelize.STRING(32),
+            allowNull: false,
+            defaultValue: '',
+        },
+        type: {
+            type: Sequelize.STRING(16),
+            allowNull: false
+        },
+        freq: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
+        driver: {
+            type: Sequelize.STRING(128),
+            allowNull: false,
+            defaultValue: ''
+        },
+        status:{
+            type: Sequelize.TEXT,
+            get: function(){
+                let status;
+                try{
+                    status = JSON.parse(this.getDataValue('status'));
+                }
+                catch(e){
+                    status = {};
+                }
+                return status;
+            },
+            set : function (value) {
+                this.setDataValue('status', JSON.stringify(value));
+            }
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+    const DevicesChannels = sequelizeInstance.define('devicesChannels', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false
+        },
+        channelId:{
+            type: Sequelize.STRING(3),
+            allowNull: false
+        },
+        comi: {
+            type: Sequelize.DECIMAL(10,6),
+            allowNull: false
+        },
+        scale:{
+            type: Sequelize.BIGINT
+        },
+        updatedAt:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false,
+            defaultValue: 0
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+    Devices.hasMany(DevicesChannels, {as: 'channels', foreignKey: 'deviceId', sourceKey: 'deviceId'});
+
+    HouseDevices.belongsTo(Devices, {as: 'device', foreignKey: 'deviceId', targetKey: 'deviceId'});
+    exports.Devices = Devices;
+    exports.DevicesChannels = DevicesChannels;
+
+    const DevicesData = sequelizeInstance.define('devicesData', {
+        id:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement:true,
+            primaryKey: true
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false,
+        },
+        channelId:{
+            type: Sequelize.STRING(3),
+            allowNull: false
+        },
+        reading: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        rateReading: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        time: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+    exports.DevicesData = DevicesData;
 }
 
 function EMDefine()

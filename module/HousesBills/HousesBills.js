@@ -5,7 +5,7 @@ const moment = require('moment');
 
 const USAGE_EXT = 10000;
 
-function generateProject(projectId, externalId, time) {
+function generateProject(projectId, time) {
     //
     const makeHousesBills = (housesBills)=>{
         return new Promise((resolve, reject)=>{
@@ -16,14 +16,15 @@ function generateProject(projectId, externalId, time) {
             _.forEach(housesBills, (billFlows, houseId)=>{
                 const billId = SnowFlake.next();
                 const amount = _.sum(fp.map(flow=>{
-                    return flow.cost;
+                    return flow.amount;
                 })(billFlows));
                 const flows = fp.map(flow=>{
                     return {
                         billId: billId,
                         deviceId: flow.deviceId,
-                        amount: flow.cost,
-                        usage: Number(flow.usage) * USAGE_EXT,
+                        amount: flow.amount,
+                        scale: flow.scale,
+                        usage: flow.usage,
                         price: flow.price,
                         createdAt: now
                     };
@@ -58,6 +59,7 @@ function generateProject(projectId, externalId, time) {
         });
     };
 
+    const timeStamp = time.unix();
     return new Promise((resolve, reject)=>{
         MySQL.Houses.findAll({
             where:{
@@ -73,15 +75,20 @@ function generateProject(projectId, externalId, time) {
                 {
                     model: MySQL.HouseDevices,
                     as: 'devices',
-                    attributes:['deviceId']
+                    attributes:['deviceId'],
+                    where:{
+                        endDate: {$or:[
+                            {$eq: 0},
+                            {$lte: timeStamp}
+                        ]}
+                    }
                 }
             ]
         }).then(
             houses=>{
                 const deviceIds = _.flattenDeep(fp.map(house=>{
                     return fp.map(dev=>{
-                        const deviceId = dev.deviceId.substr(3);
-                        return new RegExp(deviceId);
+                        return dev.deviceId;
                     })(house.devices);
                 })(houses));
 
@@ -97,55 +104,134 @@ function generateProject(projectId, externalId, time) {
                     return fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
                 })(houses)));
 
-                MongoDB.Sensor
-                    .find({
-                        key:{$in: deviceIds}
-                    })
-                    .select('_id key')
-                    .then(
-                        sensors=>{
 
-                            const CUID2DeviceIdMapping = _.fromPairs(fp.map(sensor=>{
-                                const deviceId = GUID.DeviceID(sensor.key).SensorCPTID();
-                                return [sensor._id.toString(), deviceId];
-                            })(sensors));
+                const from = moment(time).subtract(1, 'days').endOf('days').unix();
+                MySQL.DevicesData.findAll({
+                    where:{
+                        deviceId:{$in: deviceIds},
+                        time:{$between:[from, timeStamp]}
+                    },
+                    attributes:['deviceId', 'channelId', 'rateReading', 'time'],
+                    order:[['time', 'asc']]
+                }).then(
+                    devicesData=>{
+                        let dataMapping = {};
+                        _.each(devicesData, data=>{
+                            const deviceId = data.deviceId;
+                            const channelId = data.channelId;
 
-                            const CUIDs = fp.map(sensor=>{return sensor._id.toString();})(sensors);
-                            const sql = `select sensor,value from ecdaily${time.format('YYYYMM')} where date='${time.format('YYYYMMDD')}' and sensor in(${EMMySQL.GenerateSQLInArray(CUIDs)})`;
-                            let houseCostMapping = {};
-                            EMMySQL.Exec(sql).then(
-                                data=>{
-                                    _.each(data, d=>{
-                                        const deviceId = CUID2DeviceIdMapping[d.sensor];
-                                        const houseId = deviceId2HouseId[deviceId];
-                                        const priceObj = housePriceMapping[houseId];
+                            if(!dataMapping[deviceId]){
+                                dataMapping[deviceId] = {};
+                            }
 
-                                        if(!houseCostMapping[houseId]){
-                                            houseCostMapping[houseId] = [];
-                                        }
+                            if(!dataMapping[deviceId][channelId]){
+                                dataMapping[deviceId][channelId] = [];
+                            }
 
-                                        //only electric now
-                                        const base = new bigdecimal.BigDecimal(d.value);
-                                        const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
-                                        const cost = base.multiply(price);
-                                        houseCostMapping[houseId].push({
-                                            cost: cost.intValue(),
-                                            deviceId: deviceId,
-                                            usage: d.value,
-                                            price: priceObj.ELECTRIC
-                                        });
-                                    });
+                            dataMapping[deviceId][channelId].push(data.rateReading);
+                        });
 
-                                    //make housesBills
-                                    makeHousesBills(houseCostMapping).then(
-                                        ()=>{
-                                            resolve();
-                                        }
-                                    );
+                        //calculate device usage
+                        let houseCostMapping = {};
+                        _.map(dataMapping, (data, deviceId)=>{
+                            if(data['11'].length < 2){
+                                log.error(deviceId, data, 'scale missed');
+                                return;
+                            }
+
+                            const calc = (ary)=>{
+                                let usage = 0;
+                                for(let i=1; i<ary.length; i++){
+                                    usage += ary[i] - ary[i-1];
                                 }
-                            );
-                        }
-                    );
+                                return usage;
+                            };
+                            const getScale = ()=>{
+                                return _.last(data['11']);
+                            };
+                            const usage = calc(data['11']);
+                            const houseId = deviceId2HouseId[deviceId];
+                            const priceObj = housePriceMapping[houseId];
+                            if(_.isEmpty(priceObj)){
+                                return;
+                            }
+
+                            //only electric now
+                            const base = new bigdecimal.BigDecimal(usage.toString());
+                            const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
+                            const cost = base.multiply(price);
+                            if(!houseCostMapping[houseId]){
+                                houseCostMapping[houseId] = [];
+                            }
+                            const houseCost = {
+                                amount: cost.intValue(),
+                                scale: getScale(),
+                                deviceId: deviceId,
+                                usage: usage,
+                                price: priceObj.ELECTRIC
+                            };
+                            // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
+                            houseCostMapping[houseId].push(houseCost);
+                        });
+
+                        // make housesBills
+                        makeHousesBills(houseCostMapping).then(
+                            ()=>{
+                                resolve();
+                            }
+                        );
+                    }
+                );
+
+                // MongoDB.Sensor
+                //     .find({
+                //         key:{$in: deviceIds}
+                //     })
+                //     .select('_id key')
+                //     .then(
+                //         sensors=>{
+                //
+                //             const CUID2DeviceIdMapping = _.fromPairs(fp.map(sensor=>{
+                //                 const deviceId = GUID.DeviceID(sensor.key).SensorCPTID();
+                //                 return [sensor._id.toString(), deviceId];
+                //             })(sensors));
+                //
+                //             const CUIDs = fp.map(sensor=>{return sensor._id.toString();})(sensors);
+                //             const sql = `select sensor,value from ecdaily${time.format('YYYYMM')} where date='${time.format('YYYYMMDD')}' and sensor in(${EMMySQL.GenerateSQLInArray(CUIDs)})`;
+                //             let houseCostMapping = {};
+                //             EMMySQL.Exec(sql).then(
+                //                 data=>{
+                //                     _.each(data, d=>{
+                //                         const deviceId = CUID2DeviceIdMapping[d.sensor];
+                //                         const houseId = deviceId2HouseId[deviceId];
+                //                         const priceObj = housePriceMapping[houseId];
+                //
+                //                         if(!houseCostMapping[houseId]){
+                //                             houseCostMapping[houseId] = [];
+                //                         }
+                //
+                //                         //only electric now
+                //                         const base = new bigdecimal.BigDecimal(d.value);
+                //                         const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
+                //                         const cost = base.multiply(price);
+                //                         houseCostMapping[houseId].push({
+                //                             cost: cost.intValue(),
+                //                             deviceId: deviceId,
+                //                             usage: d.value,
+                //                             price: priceObj.ELECTRIC
+                //                         });
+                //                     });
+                //
+                //                     //make housesBills
+                //                     makeHousesBills(houseCostMapping).then(
+                //                         ()=>{
+                //                             resolve();
+                //                         }
+                //                     );
+                //                 }
+                //             );
+                //         }
+                //     );
             }
         );
     });
@@ -163,7 +249,7 @@ function generate(projects, time) {
     };
 
     const project = _.head(projects);
-    generateProject(project.pid, project.externalId, time).then(
+    generateProject(project.id, time).then(
         ()=>{
             next();
         }
