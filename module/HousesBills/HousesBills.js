@@ -111,7 +111,7 @@ function generateProject(projectId, time) {
                         deviceId:{$in: deviceIds},
                         time:{$between:[from, timeStamp]}
                     },
-                    attributes:['deviceId', 'channelId', 'rateReading', 'time'],
+                    attributes:['deviceId', 'channelId', 'reading', 'rateReading', 'time'],
                     order:[['time', 'asc']]
                 }).then(
                     devicesData=>{
@@ -128,7 +128,10 @@ function generateProject(projectId, time) {
                                 dataMapping[deviceId][channelId] = [];
                             }
 
-                            dataMapping[deviceId][channelId].push(data.rateReading);
+                            dataMapping[deviceId][channelId].push({
+                                rateReading: data.rateReading,
+                                reading: data.reading
+                            });
                         });
 
                         //calculate device usage
@@ -142,12 +145,12 @@ function generateProject(projectId, time) {
                             const calc = (ary)=>{
                                 let usage = 0;
                                 for(let i=1; i<ary.length; i++){
-                                    usage += ary[i] - ary[i-1];
+                                    usage += ary[i].rateReading - ary[i-1].rateReading;
                                 }
                                 return usage;
                             };
                             const getScale = ()=>{
-                                return _.last(data['11']);
+                                return _.last(data['11']).reading;
                             };
                             const usage = calc(data['11']);
                             const houseId = deviceId2HouseId[deviceId];

@@ -627,10 +627,38 @@ function SequelizeDefine()
 		freezeTableName: true
 	});
 	Contracts.belongsTo(Users);
+	Contracts.belongsTo(Rooms, {as: 'room'});
 	exports.Contracts = Contracts;
 	exports.Users = Users;
 
-
+    const CashAccount = sequelizeInstance.define('cashAccount', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true,
+        },
+        userId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false,
+        },
+        cash: {
+            type: Sequelize.BIGINT,
+            defaultValue: 0
+        },
+        threshold: {
+            type: Sequelize.BIGINT,
+            defaultValue: 0
+        },
+        locker: {
+            type: Sequelize.INTEGER.UNSIGNED,
+            defaultValue: 0
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+    exports.CashAccount = CashAccount;
 
 	exports.GeoLocation = GeoLocation;
 
@@ -736,6 +764,55 @@ function SequelizeDefine()
         freezeTableName: true
     });
 
+    const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        type:{
+            type: Sequelize.STRING(16),
+            allowNull: false
+        },
+        contractId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.INTEGER,    //单位分
+            allowNull: false,
+            defaultValue: 0
+        },
+        scale: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        usage: {
+            type: Sequelize.BIGINT,
+            allowNull: false
+        },
+        share: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 100
+        },
+        createdAt:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+    exports.DevicePrePaid = devicePrePaid;
 
     exports.BillFlows = sequelizeInstance.define('billflows', {
         billId: {
@@ -985,6 +1062,7 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
+    Houses.hasMany(HousesBills, {as: 'bills', foreignKey: 'houseId'});
     const HousesBillsFlows = sequelizeInstance.define('housesBillsFlows', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
@@ -1024,55 +1102,12 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
-    HousesBills.hasMany(HousesBillsFlows, {as: 'billFlows', foreignKey: 'billId'});
+    HousesBills.hasMany(HousesBillsFlows, {as: 'billFlows', foreignKey: 'billId', targetKey: 'billId', sourceKey: 'billId'});
 
 
     exports.HousesBills = HousesBills;
     exports.HousesBillsFlows = HousesBillsFlows;
 
-    const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
-        id: {
-            type: Sequelize.BIGINT.UNSIGNED,
-            autoIncrement: true,
-            primaryKey: true
-        },
-        type:{
-            type: Sequelize.STRING(16),
-            allowNull: false
-        },
-        contractId:{
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
-        },
-        projectId:{
-            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
-            allowNull: false
-        },
-        deviceId:{
-            type: Sequelize.STRING(32),
-            allowNull: false
-        },
-        amount: {
-            type: Sequelize.INTEGER,    //单位分
-            allowNull: false,
-            defaultValue: 0
-        },
-        scale: {
-            type: Sequelize.BIGINT,
-            allowNull: false
-        },
-        usage: {
-            type: Sequelize.BIGINT,
-            allowNull: false
-        },
-        createdAt:{
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
-        }
-    },{
-        timestamps: false,
-        freezeTableName: true
-    });
 
     const Devices = sequelizeInstance.define('devices', {
         id: {

@@ -3,139 +3,199 @@ const _ = require('lodash');
 const bigdecimal = require('bigdecimal');
 const moment = require('moment');
 
-const USAGE_EXT = 10000;
-
-function generateProject(projectId, externalId, time) {
+function generateProject(projectId, time) {
     //
     return new Promise((resolve, reject)=>{
-        const billTimestamp = time.unix();
-        const now = moment().unix();
-        const date = Number(time.format('YYYYMMDD'));
-        MySQL.Houses.findAll({
+
+        const dailyFrom = moment(time).startOf('days').unix();
+        const dailyTo = time.unix();
+
+        const deviceFilter = {
+            endDate: {$or:[
+                {$eq: 0},
+                {$between: [dailyFrom, dailyTo]}
+            ]}
+        };
+
+        const AvgShare = (rooms)=>{
+            const count = rooms.length;
+            let base = Math.floor(100/count);
+            let suffix = 0;
+            if(base*count !==  100){
+                suffix = 100 - base * count;
+            }
+
+            let share = {};
+            let minTid = _.min(rooms);
+            rooms.map(roomId=>{
+                share[roomId] = base;
+            });
+            share[minTid] += suffix;
+            return share;
+        };
+
+        MySQL.Contracts.findAll({
             where:{
-                status: 'OPEN',
-                '$rooms.status$': 'INUSE'
+                projectId: projectId,
+                status:'ONGOING',
+                from: {$lte: dailyFrom},
+                to:{$ne: 0, $gte: dailyTo}
             },
+            attributes:['id', 'roomId', 'userId'],
             include:[
                 {
                     model: MySQL.Rooms,
-                    as: 'rooms',
+                    as: 'room',
                     include:[
                         {
                             model: MySQL.HouseDevices,
                             as: 'devices',
-                            required: true
-                        },
-                        {
-                            model: MySQL.Contracts,
-                            as: 'contracts',
-                            where:{
-                                to:{$gte: billTimestamp},
-                                from:{$lte: billTimestamp}
-                            }
+                            where: deviceFilter
                         }
-                    ]
-                },
-                {
-                    model: MySQL.HouseDevices,
-                    as: 'devices',
-                    where:{
-                        public: true
-                    }
+                    ],
+                    required: false
                 }
             ]
         }).then(
-            houses=>{
+            contracts=>{
+                if(!contracts.length){
+                    return resolve();
+                }
 
-                const monthStart = time.startOf('month');
-                const monthEnd = time.endOf('month');
+                const houseIds = _.compact( fp.map(contract=>{return contract.room && contract.room.houseId;})(contracts) );
+                const roomId2ContractId = _.fromPairs(fp.map(contract=>{
+                    return [contract.roomId, contract.id]
+                })(contracts));
 
-                const deviceIds = _.flattenDeep(fp.map(house=>{
-                    return _.union(fp.map(dev=>{return dev.deviceId;})(house.devices),
-                        _.flattenDeep(fp.map(room=>{
-                            return fp.map(dev=>{return dev.deviceId;})(room.devices);
-                        })(house.rooms))
-                    );
-                })(houses));
-
-                MySQL.HousesBillsFlows.findAll({
-                    where:{
-                        deviceId:{$in: deviceIds},
-                        createdAt: date
+                let deviceIds = [];
+                let houseId2Rooms = {};
+                let deviceId2RoomId = {};
+                let roomId2UserId = {};
+                _.each(contracts, contract=>{
+                    if(!contract.room){
+                        return;
                     }
+                    const roomId = contract.room.id;
+                    const houseId = contract.room.houseId;
+
+                    if(!houseId2Rooms[houseId]){
+                        houseId2Rooms[houseId] = [];
+                    }
+                    houseId2Rooms[houseId].push(roomId);
+                    roomId2UserId[contract.roomId] = contract.userId;
+
+                    _.each(contract.room.devices, device=>{
+                        deviceId2RoomId[device.deviceId] = contract.roomId;
+                        deviceIds.push(device.deviceId);
+                    });
+                });
+
+                MySQL.Houses.findAll({
+                    where:{
+                        id: {$in: houseIds}
+                    },
+                    include:[
+                        {
+                            model: MySQL.HouseDevices,
+                            as:'devices',
+                            where:_.assignIn({
+                                public: true
+                            }, deviceFilter)
+                        }
+                    ]
                 }).then(
-                    flows=>{
-                        const deviceCostMapping = _.fromPairs(fp.map(flow=>{
-                            return [flow.deviceId, flow.amount];
-                        })(flows));
-
+                    houses=>{
+                        let publicDeviceId2HouseId = {};
                         _.each(houses, house=>{
-                            _.each(house.rooms, room=>{
-                                //create bill
-                                const bill = {
-                                    flow: 'pay',
-                                    entityType: 'property',
-                                    contractId: room.contracts[0].id,
-                                    userId: room.contracts[0].userId,
-                                    projectId: projectId,
-                                    source: 'device',
-                                    type: 'extra',
-                                    startDate: monthStart.unix(),
-                                    endDate: monthEnd.unix(),
-                                    dueDate: 0,
-                                    createdAt: monthStart.unix()
-                                };
-
-                                MySQL.Bills.findOrCreate({
-                                    where: bill,
-                                    defaults: bill,
-                                }).then(
-                                    result=>{
-                                        if(!result){
-                                            return;
-                                        }
-                                        const billIns = result[0];
-
-                                        const devicesBills = fp.map(dev=>{
-                                            const cost = deviceCostMapping[dev.deviceId];
-                                            if(cost === null || cost === undefined){
-                                                return;
-                                            }
-                                            return {
-                                                billId: billIns.id,
-                                                projectId: projectId,
-                                                relevantId: Number( dev.deviceId.substr(3) ),
-                                                amount: cost,
-                                                createdAt: now
-                                            };
-                                        })(room.devices);
-                                        const amount = _.sum(fp.map(bill=>{return bill.amount;})(devicesBills));
-
-                                        MySQL.Sequelize.transaction(t=>{
-                                            return MySQL.Bills.increment(
-                                                {
-                                                    dueAmount: amount
-                                                },
-                                                {
-                                                    where:{
-                                                        id: bill.id
-                                                    },
-                                                    transaction: t
-                                                }
-                                            ).then(
-                                                ()=>{
-                                                    return MySQL.BillFlows.bulkCreate(devicesBills, {transaction: t});
-                                                }
-                                            );
-                                        });
-                                    }
-                                );
+                            _.each(house.devices, device=>{
+                                publicDeviceId2HouseId[device.deviceId] = house.id;
+                                deviceIds.push(device.deviceId);
                             });
                         });
 
+                        //
+                        MySQL.HousesBillsFlows.findAll({
+                            where:{
+                                deviceId:{$in: deviceIds},
+                                createdAt: time.format('YYYYMMDD')
+                            }
+                        }).then(
+                            flows=>{
+
+                                const Paid = (devicePrePaid, roomId)=>{
+                                    log.info('device pre paid: ', devicePrePaid);
+                                    MySQL.DevicePrePaid.create(devicePrePaid);
+                                    MySQL.CashAccount.update(
+                                        {cash:MySQL.Literal(`cash-${devicePrePaid.amount}`)},
+                                        {
+                                            where:{
+                                                userId: roomId2UserId[roomId]
+                                            }
+                                        }
+                                    );
+                                };
+
+                                _.each(flows, flow=>{
+                                    const deviceId = flow.deviceId;
+                                    if(publicDeviceId2HouseId[flow.deviceId]){
+                                        //a public device
+                                        const houseId = publicDeviceId2HouseId[flow.deviceId];
+                                        const rooms = houseId2Rooms[houseId];
+                                        const share = AvgShare(rooms);
+                                        _.map(share, (rate, roomId)=>{
+
+                                            let amount = new bigdecimal.BigDecimal(amount.toString());
+                                            const rate = new bigdecimal.BigDecimal(rate.toString());
+                                            amount = amount.multiply(rate).doubleValue();
+
+                                            const devicePrePaid = {
+                                                type:'ELECTRICITY',
+                                                contractId: roomId2ContractId[roomId],
+                                                projectId: projectId,
+                                                deviceId: flow.deviceId,
+                                                amount: amount,
+                                                scale: flow.scale,
+                                                usage: flow.usage,
+                                                share: rate * 100,
+                                                createdAt: moment().unix()
+                                            };
+                                            Paid(devicePrePaid, roomId);
+                                            // log.info('device pre paid: ', devicePrePaid);
+                                            // MySQL.DevicePrePaid.create(devicePrePaid);
+                                            // MySQL.CashAccount.update(
+                                            //     {cash:MySQL.Literal(`cash-${amount}`)},
+                                            //     {
+                                            //         where:{
+                                            //             userId: roomId2UserId[roomId]
+                                            //         }
+                                            //     }
+                                            // );
+                                        });
+                                    }
+                                    else{
+                                        //
+                                        const roomId = deviceId2RoomId[deviceId];
+                                        const devicePrePaid = {
+                                            type:'ELECTRICITY',
+                                            contractId: roomId2ContractId[roomId],
+                                            projectId: projectId,
+                                            deviceId: flow.deviceId,
+                                            amount: flow.amount,
+                                            scale: flow.scale,
+                                            usage: flow.usage,
+                                            createdAt: moment().unix()
+                                        };
+                                        Paid(devicePrePaid, roomId);
+                                    }
+                                });
+                            }
+                        );
+                        //
                         resolve();
                     }
                 );
+
+
             }
         );
     });
@@ -153,7 +213,7 @@ function generate(projects, time) {
     };
 
     const project = _.head(projects);
-    generateProject(project.pid, project.externalId, time).then(
+    generateProject(project.id, time).then(
         ()=>{
             next();
         }
@@ -164,10 +224,10 @@ exports.Run = ()=>{
     let lastPaymentTime;
     let tryPayment = function()
     {
-        setTimeout(function(){
-            setTimeout(function(){
-                // let m = moment('2017 1225 0800', 'YYYY MMDD HHmm');
-                let m = moment();
+        // setTimeout(function(){
+        //     setTimeout(function(){
+                let m = moment('2017 1225 0800', 'YYYY MMDD HHmm');
+                // let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0800'){
@@ -183,9 +243,9 @@ exports.Run = ()=>{
                         );
                     }
                 }
-                tryPayment();
-            }, 1000 * 60);
-        }, 0);
+                // tryPayment();
+            // }, 1000 * 60);
+        // }, 0);
     };
     tryPayment();
 };
