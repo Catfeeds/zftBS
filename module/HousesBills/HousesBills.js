@@ -167,6 +167,9 @@ function generateProject(projectId, time) {
                                 };
 
                                 const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
+                                if(_.isEmpty(data)){
+                                    return;
+                                }
                                 const usage = calc(data);
                                 const houseId = deviceId2HouseId[deviceId];
                                 const priceObj = housePriceMapping[houseId];
@@ -281,7 +284,7 @@ exports.Run = ()=>{
     {
         // setTimeout(function(){
         //     setTimeout(function(){
-                let m = moment('2017 1226 0100', 'YYYY MMDD HHmm');
+                let m = moment('2017 1228 0100', 'YYYY MMDD HHmm');
                 // let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
