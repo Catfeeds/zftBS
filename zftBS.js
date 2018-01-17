@@ -6,6 +6,7 @@ Include( '/libs/log')("zftBS");
 {
     global.MySQL = Include('/libs/mysql');
     global.GUID = Include('/libs/guid');
+    global.Message = Include('/libs/message');
     global.ErrorCode = Include('/libs/errorCode');
     global.SnowFlake = Include('/libs/snowflake').Alloc(1, 2);
 }

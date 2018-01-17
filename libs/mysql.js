@@ -673,21 +673,26 @@ function SequelizeDefine()
 	});
 
     exports.Bills = sequelizeInstance.define('bills', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false,
+            primaryKey: true
+        },
         flow: { //资金流向(收入/支出)
             type: Sequelize.STRING(10),
             allowNull: false,
             defaultValue: 'receive',
-			validate: {
-				isIn: [['pay', 'receive']]
-			}
+            validate: {
+                isIn: [['pay', 'receive']]
+            }
         },
         entityType: { //实体类型(租客/业主/房源)
             type: Sequelize.STRING(10),
             allowNull: false,
-			defaultValue: 'property',
-			validate: {
-				isIn: [['tenant', 'landlord', 'property']]
-			}
+            defaultValue: 'property',
+            validate: {
+                isIn: [['tenant', 'landlord', 'property']]
+            }
         },
         contractId: {   //类型关联ID(房源=>contractid)
             type: Sequelize.BIGINT.UNSIGNED,
@@ -697,25 +702,25 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: true
         },
-		projectId: {    //项目ID
+        projectId: {    //项目ID
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         },
         source: {   //来源
-			type: Sequelize.STRING(10),
+            type: Sequelize.STRING(10),
             allowNull: false,
-			defaultValue: 'contract',
-			validate: {
-				isIn: [['topup', 'accounting', 'device', 'contract']]
-			}
+            defaultValue: 'contract',
+            validate: {
+                isIn: [['topup', 'accounting', 'device', 'contract']]
+            }
         },
         type: {   //账单类型(bill type)
-			type: Sequelize.STRING(20),
+            type: Sequelize.STRING(20),
             allowNull: false,
-			validate: {
-				isIn: [['bond', 'deposit', 'rent', 'extra',
-                    'bond-refund', 'deposit-refund', 'rent-refund', 'extra-refund']]
-			}
+            validate: {
+                isIn: [['bond', 'deposit', 'rent', 'extra',
+                    'bond-refund', 'deposit-refund', 'rent-refund', 'extra-refund', 'final']]
+            }
         },
         startDate: {
             type: Sequelize.BIGINT.UNSIGNED,    //开始账期
@@ -731,8 +736,8 @@ function SequelizeDefine()
         },
         dueAmount: {   //应付金额 单位： 分
             type: Sequelize.BIGINT.UNSIGNED,
-			allowNull: false,
-			defaultValue: 0
+            allowNull: false,
+            defaultValue: 0
         },
         createdAt: {
             type: Sequelize.BIGINT.UNSIGNED,    //创建时间
@@ -763,6 +768,56 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
+    exports.BillPayment = sequelizeInstance.define('billpayment', {
+        billId: {
+            type: Sequelize.BIGINT.UNSIGNED,    // 账单ID
+            allowNull: false
+        },
+        projectId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.BIGINT.UNSIGNED,    //金额 单位：分
+            allowNull: false,
+            defaultValue: 0
+        },
+        paymentChannel: {
+            type: Sequelize.STRING(20),    // 支付渠道
+            allowNull: false,
+            defaultValue: 'cash',
+            validate: {
+                isIn: [['cash', 'wechat', 'alipay']]
+            }
+        },
+        operator: {
+            type: Sequelize.BIGINT.UNSIGNED,    // 经办人
+            allowNull: true
+        },
+        paidAt: {
+            type: Sequelize.BIGINT.UNSIGNED,    // 支付发生时间
+            allowNull: false,
+            defaultValue: 0
+        },
+        remark: {
+            type: Sequelize.TEXT    // 备注
+        },
+        status: {
+            type: Sequelize.STRING(10),    //状态
+            allowNull: false,
+            defaultValue: 'pending',
+            validate: {
+                isIn: [['pending', 'approved', 'declined']]
+            }
+        }
+    }, {
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+    exports.Bills.hasMany(exports.BillPayment , {as: 'payments', foreignKey: 'billId'});
+    exports.Contracts.hasMany(exports.Bills);
+    exports.Bills.belongsTo(exports.Contracts);
 
     const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
         id: {
@@ -1234,6 +1289,43 @@ function SequelizeDefine()
         freezeTableName: true
     });
     exports.DevicesData = DevicesData;
+
+    exports.EventQueue = sequelizeInstance.define('eventqueue',
+        {
+            id:{
+                type: Sequelize.BIGINT.UNSIGNED,
+                primaryKey: true
+            },
+            messageTypeId: {
+                type: Sequelize.BIGINT.UNSIGNED,
+                allowNull: false
+            },
+            timestamp: {
+                type: Sequelize.BIGINT.UNSIGNED,
+                allowNull: false
+            },
+            param: {
+                type: Sequelize.TEXT,
+                get: function(){
+                    var param;
+                    try{
+                        param = JSON.parse(this.getDataValue('param'));
+                    }
+                    catch(e){
+                        param = {};
+                    }
+
+                    return param;
+                },
+                set : function (value) {
+                    this.setDataValue('param', JSON.stringify(value));
+                }
+            }
+        }, {
+            timestamps: false,
+            freezeTableName: true
+        }
+    );
 }
 
 function EMDefine()
