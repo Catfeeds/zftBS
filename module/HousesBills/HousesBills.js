@@ -75,7 +75,7 @@ function generateProject(projectId, time) {
                 {
                     model: MySQL.HouseDevices,
                     as: 'devices',
-                    attributes:['deviceId'],
+                    attributes:['deviceId', 'startDate', 'endDate'],
                     where:{
                         endDate: {$or:[
                             {$eq: 0},
@@ -130,51 +130,67 @@ function generateProject(projectId, time) {
 
                             dataMapping[deviceId][channelId].push({
                                 rateReading: data.rateReading,
-                                reading: data.reading
+                                reading: data.reading,
+                                time: data.time
                             });
                         });
 
+                        houses;
                         //calculate device usage
                         let houseCostMapping = {};
-                        _.map(dataMapping, (data, deviceId)=>{
-                            if(data['11'].length < 2){
-                                log.error(deviceId, data, 'scale missed');
-                                return;
-                            }
-
-                            const calc = (ary)=>{
-                                let usage = 0;
-                                for(let i=1; i<ary.length; i++){
-                                    usage += ary[i].rateReading - ary[i-1].rateReading;
+                        _.each(houses, house=>{
+                            _.each(house.devices, device=>{
+                                const deviceId = device.deviceId;
+                                if( !dataMapping[deviceId] ){
+                                    return;
                                 }
-                                return usage;
-                            };
-                            const getScale = ()=>{
-                                return _.last(data['11']).reading;
-                            };
-                            const usage = calc(data['11']);
-                            const houseId = deviceId2HouseId[deviceId];
-                            const priceObj = housePriceMapping[houseId];
-                            if(_.isEmpty(priceObj)){
-                                return;
-                            }
 
-                            //only electric now
-                            const base = new bigdecimal.BigDecimal(usage.toString());
-                            const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
-                            const cost = base.multiply(price);
-                            if(!houseCostMapping[houseId]){
-                                houseCostMapping[houseId] = [];
-                            }
-                            const houseCost = {
-                                amount: cost.intValue(),
-                                scale: getScale(),
-                                deviceId: deviceId,
-                                usage: usage,
-                                price: priceObj.ELECTRIC
-                            };
-                            // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
-                            houseCostMapping[houseId].push(houseCost);
+                                if( !dataMapping[deviceId]['11'] ){
+                                    return;
+                                }
+
+                                const dataFilter = (data, endDate)=>{
+                                    return _.compact(fp.map(d=>{
+                                        const isValid = endDate === 0 || d.time<endDate;
+                                        return isValid ? d : null;
+                                    })(data));
+                                };
+                                const calc = (ary)=>{
+                                    let usage = 0;
+                                    for(let i=1; i<ary.length; i++){
+                                        usage += ary[i].rateReading - ary[i-1].rateReading;
+                                    }
+                                    return usage;
+                                };
+                                const getScale = ()=>{
+                                    return _.last(data).reading;
+                                };
+
+                                const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
+                                const usage = calc(data);
+                                const houseId = deviceId2HouseId[deviceId];
+                                const priceObj = housePriceMapping[houseId];
+                                if(_.isEmpty(priceObj)){
+                                    return;
+                                }
+
+                                //only electric now
+                                const base = new bigdecimal.BigDecimal(usage.toString());
+                                const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
+                                const cost = base.multiply(price);
+                                if(!houseCostMapping[houseId]){
+                                    houseCostMapping[houseId] = [];
+                                }
+                                const houseCost = {
+                                    amount: cost.intValue(),
+                                    scale: getScale(),
+                                    deviceId: deviceId,
+                                    usage: usage,
+                                    price: priceObj.ELECTRIC
+                                };
+                                // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
+                                houseCostMapping[houseId].push(houseCost);
+                            });
                         });
 
                         // make housesBills
@@ -263,10 +279,10 @@ exports.Run = ()=>{
     let lastPaymentTime;
     let tryPayment = function()
     {
-        setTimeout(function(){
-            setTimeout(function(){
-                // let m = moment('2017 1225 0100', 'YYYY MMDD HHmm');
-                let m = moment();
+        // setTimeout(function(){
+        //     setTimeout(function(){
+                let m = moment('2017 1226 0100', 'YYYY MMDD HHmm');
+                // let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0100'){
@@ -282,9 +298,9 @@ exports.Run = ()=>{
                         );
                     }
                 }
-                tryPayment();
-            }, 1000 * 60);
-        }, 0);
+                // tryPayment();
+            // }, 1000 * 60);
+        // }, 0);
     };
     tryPayment();
 };

@@ -102,10 +102,10 @@ exports.Run = ()=>{
     let lastPaymentTime;
     let tryHints = function ()
     {
-        // setTimeout(function(){
-        //     setTimeout(function(){
-                let m = moment('2018 0714 0100', 'YYYY MMDD HHmm');
-                // let m = moment();
+        setTimeout(function(){
+            setTimeout(function(){
+                // let m = moment('2018 0714 0100', 'YYYY MMDD HHmm');
+                let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0100'){
@@ -120,9 +120,9 @@ exports.Run = ()=>{
                         );
                     }
                 }
-                // tryHints();
-            // }, 1000 * 60);
-        // }, 0);
+                tryHints();
+            }, 1000 * 60);
+        }, 0);
     };
     tryHints();
 };
