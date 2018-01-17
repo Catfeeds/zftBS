@@ -42,7 +42,7 @@ async function Pay(userId, amount) {
         }
     }
 
-    return ErrorCode.ack(ErrorCode.OK, {balance: cashAccount.cash + amount});
+    return ErrorCode.ack(ErrorCode.OK, {balance: cashAccount.cash + amount, amount: amount, userId: userId});
 }
 
 

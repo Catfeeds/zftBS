@@ -3,5 +3,10 @@
     "read": "RDS_READ",
     "write": "RDS_WRITE"
   },
-  "LOGFILE": "LOGFILE"
+  "logfile": "LOGFILE",
+
+  "env":"ENV",
+  "redis_host": "REDIS_HOST",
+  "redis_port": "REDIS_PORT",
+  "redis_passwd": "REDIS_PASSWD"
 }

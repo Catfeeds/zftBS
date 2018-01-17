@@ -282,10 +282,10 @@ exports.Run = ()=>{
     let lastPaymentTime;
     let tryPayment = function()
     {
-        // setTimeout(function(){
-        //     setTimeout(function(){
-                let m = moment('2017 1228 0100', 'YYYY MMDD HHmm');
-                // let m = moment();
+        setTimeout(function(){
+            setTimeout(function(){
+                // let m = moment('2017 1229 0100', 'YYYY MMDD HHmm');
+                let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0100'){
@@ -301,9 +301,9 @@ exports.Run = ()=>{
                         );
                     }
                 }
-                // tryPayment();
-            // }, 1000 * 60);
-        // }, 0);
+                tryPayment();
+            }, 1000 * 60);
+        }, 0);
     };
     tryPayment();
 };

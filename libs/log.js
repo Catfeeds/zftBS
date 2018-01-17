@@ -12,10 +12,11 @@ exports = module.exports = function(appName, logPath)
         fs.mkdirSync(loggerPath);
     }
 
+    const methods = ['tracer', 'warn', 'info', 'error', 'debug',  'response', 'request', 'delete', 'sys'];
     if(config.logfile) {
         global.log = require('tracer').dailyfile({
             root: logPath,
-            methods: ['tracer', 'warn', 'info', 'error', 'debug',  'response', 'request', 'delete'],
+            methods: methods,
             allLogsFileName: appName,
             format: "[{{timestamp}}] {{ipAddress}}:{{pid}} {{appName}} {{title}} {{path}}{{relativePath}}:{{line}}:{{method}} {{message}}",
             dateformat: "yyyy-mm-dd HH:MM:ss",
@@ -41,7 +42,7 @@ exports = module.exports = function(appName, logPath)
     }
     else{
         global.log = require('tracer').console({
-            methods: ['tracer', 'warn', 'info', 'error', 'debug', 'response', 'request', 'delete']
+            methods: methods
         });
     }
 };

@@ -121,16 +121,19 @@ function generateProject(projectId, time) {
                             }
                         }).then(
                             flows=>{
-
-                                const Paid = (devicePrePaid, roomId)=>{
+                                const Pay = (devicePrePaid, roomId)=>{
                                     log.info('device pre paid: ', devicePrePaid);
-                                    MySQL.DevicePrePaid.create(devicePrePaid);
-                                    MySQL.CashAccount.update(
-                                        {cash:MySQL.Literal(`cash-${devicePrePaid.amount}`)},
-                                        {
-                                            where:{
-                                                userId: roomId2UserId[roomId]
+                                    const userId = roomId2UserId[roomId];
+
+                                    Util.PayWithOwed(userId, devicePrePaid.amount).then(
+                                        ret=>{
+                                            if(ret.code !== ErrorCode.OK ){
+                                                log.error('PayWithOwed failed', userId, devicePrePaid, roomId, ret);
+                                                return;
                                             }
+
+                                            MySQL.DevicePrePaid.create(devicePrePaid);
+                                            Message.BalanceChange(projectId, userId, ret.amount, ret.balance);
                                         }
                                     );
                                 };
@@ -144,32 +147,22 @@ function generateProject(projectId, time) {
                                         const share = AvgShare(rooms);
                                         _.map(share, (rate, roomId)=>{
 
-                                            let amount = new bigdecimal.BigDecimal(amount.toString());
-                                            const rate = new bigdecimal.BigDecimal(rate.toString());
-                                            amount = amount.multiply(rate).doubleValue();
+                                            let amount = new bigdecimal.BigDecimal(flow.amount.toString());
+                                            const rateStr = new bigdecimal.BigDecimal(rate.toString());
+                                            amount = amount.multiply(rateStr).doubleValue();
 
                                             const devicePrePaid = {
                                                 type:'ELECTRICITY',
                                                 contractId: roomId2ContractId[roomId],
                                                 projectId: projectId,
                                                 deviceId: flow.deviceId,
-                                                amount: amount,
+                                                amount: -amount,
                                                 scale: flow.scale,
                                                 usage: flow.usage,
                                                 share: rate * 100,
                                                 createdAt: moment().unix()
                                             };
-                                            Paid(devicePrePaid, roomId);
-                                            // log.info('device pre paid: ', devicePrePaid);
-                                            // MySQL.DevicePrePaid.create(devicePrePaid);
-                                            // MySQL.CashAccount.update(
-                                            //     {cash:MySQL.Literal(`cash-${amount}`)},
-                                            //     {
-                                            //         where:{
-                                            //             userId: roomId2UserId[roomId]
-                                            //         }
-                                            //     }
-                                            // );
+                                            Pay(devicePrePaid, roomId);
                                         });
                                     }
                                     else{
@@ -180,18 +173,21 @@ function generateProject(projectId, time) {
                                             contractId: roomId2ContractId[roomId],
                                             projectId: projectId,
                                             deviceId: flow.deviceId,
-                                            amount: flow.amount,
+                                            amount: -flow.amount,
                                             scale: flow.scale,
                                             usage: flow.usage,
                                             createdAt: moment().unix()
                                         };
-                                        Paid(devicePrePaid, roomId);
+                                        Pay(devicePrePaid, roomId);
                                     }
                                 });
+
+
+                                //
+
+                                resolve();
                             }
                         );
-                        //
-                        resolve();
                     }
                 );
 
@@ -224,10 +220,10 @@ exports.Run = ()=>{
     let lastPaymentTime;
     let tryPayment = function()
     {
-        // setTimeout(function(){
-        //     setTimeout(function(){
-                let m = moment('2017 1225 0800', 'YYYY MMDD HHmm');
-                // let m = moment();
+        setTimeout(function(){
+            setTimeout(function(){
+                // let m = moment('2017 1227 0800', 'YYYY MMDD HHmm');
+                let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0800'){
@@ -243,9 +239,9 @@ exports.Run = ()=>{
                         );
                     }
                 }
-                // tryPayment();
-            // }, 1000 * 60);
-        // }, 0);
+                tryPayment();
+            }, 1000 * 60);
+        }, 0);
     };
     tryPayment();
 };

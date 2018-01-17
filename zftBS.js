@@ -9,6 +9,7 @@ Include( '/libs/log')("zftBS");
     global.Message = Include('/libs/message');
     global.ErrorCode = Include('/libs/errorCode');
     global.SnowFlake = Include('/libs/snowflake').Alloc(1, 2);
+    global.Util = Include('/libs/util');
 }
 
 MySQL.Load().then(

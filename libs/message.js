@@ -6,9 +6,11 @@ const MessageType = {
     NTF_BALANCEINSUFFICIENT: 5300,  //余额不足
     NTF_ACCOUNTARREARS: 5301,       //账户欠费
     NTF_ARREARSSTOPSERVICES: 5303,  //停服断电
+
     NTF_ACCOUNTNEW: 5305,           //创建账户
     NTF_RENTBILL: 5400,             //房租账单
     NTF_BILLEXPIRED: 5401,          //账单过期
+    NTF_BALANCECHANGE: 5402,        //余额变动
 };
 
 function send(messageTypeId, body){
@@ -39,7 +41,7 @@ function bulkSend(messageTypeId, messages) {
     MySQL.EventQueue.bulkCreate(bulkMessages).then(
         ()=>{},
         err=>{
-            log.error(err, messageTypeId, body, obj);
+            log.error(err, messageTypeId, messages, obj);
         }
     );
 }
@@ -58,4 +60,19 @@ exports.bulkRentBill = (bills)=>{
 };
 exports.bulkBillExpired = (bills)=>{
     bulkSend(MessageType.NTF_BILLEXPIRED, bills);
+};
+
+
+exports.BalanceChange = (projectId, userId, amount, balance)=>{
+    MQ.BroadCast({
+        id: SnowFlake.next(),
+        messageTypeId: MessageType.NTF_BALANCECHANGE,
+        timestamp: moment().unix(),
+        param: {
+            projectId: projectId,
+            userId: userId,
+            amount: amount,
+            balance: balance
+        }
+    });
 };
