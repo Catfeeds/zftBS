@@ -1023,6 +1023,11 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: true
         },
+        category:{
+            type: Sequelize.STRING(8),
+            allowNull: false,
+            defaultValue: 'HOST'
+        },
         sourceId:{
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false,

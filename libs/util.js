@@ -15,13 +15,14 @@ async function Pay(userId, amount) {
     }
 
     try {
-        const result = MySQL.CashAccount.update(
+        const result = await MySQL.CashAccount.update(
             {
                 cash: MySQL.Literal(`cash+${amount}`),
                 locker: cashAccount.locker > MAX_LOCK ? 1: MySQL.Literal(`locker+1`)
             },
             {
                 where: {
+                    userId: userId,
                     locker: cashAccount.locker
                 }
             }
@@ -34,7 +35,7 @@ async function Pay(userId, amount) {
     catch(err){
         log.error('pay error', userId, amount, err);
 
-        if(err.message === ErrorCode.LOCKDUMPLICATE){
+        if(err.message === ErrorCode.LOCKDUMPLICATE.toString()){
             return ErrorCode.ack(ErrorCode.LOCKDUMPLICATE);
         }
         else {

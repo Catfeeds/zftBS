@@ -70,7 +70,10 @@ function generateProject(projectId, time) {
                 {
                     model: MySQL.HouseDevicePrice,
                     as: 'prices',
-                    attributes: ['sourceId', 'type', 'price']
+                    where:{
+                        category: 'HOST'
+                    },
+                    attributes: ['sourceId', 'category', 'type', 'price']
                 },
                 {
                     model: MySQL.HouseDevices,
@@ -135,7 +138,6 @@ function generateProject(projectId, time) {
                             });
                         });
 
-                        houses;
                         //calculate device usage
                         let houseCostMapping = {};
                         _.each(houses, house=>{
@@ -167,7 +169,8 @@ function generateProject(projectId, time) {
                                 };
 
                                 const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
-                                if(_.isEmpty(data)){
+                                if(_.isEmpty(data) || data.length === 1){
+                                    log.error(deviceId, ' data is empty or less then 2', data);
                                     return;
                                 }
                                 const usage = calc(data);
@@ -204,56 +207,6 @@ function generateProject(projectId, time) {
                         );
                     }
                 );
-
-                // MongoDB.Sensor
-                //     .find({
-                //         key:{$in: deviceIds}
-                //     })
-                //     .select('_id key')
-                //     .then(
-                //         sensors=>{
-                //
-                //             const CUID2DeviceIdMapping = _.fromPairs(fp.map(sensor=>{
-                //                 const deviceId = GUID.DeviceID(sensor.key).SensorCPTID();
-                //                 return [sensor._id.toString(), deviceId];
-                //             })(sensors));
-                //
-                //             const CUIDs = fp.map(sensor=>{return sensor._id.toString();})(sensors);
-                //             const sql = `select sensor,value from ecdaily${time.format('YYYYMM')} where date='${time.format('YYYYMMDD')}' and sensor in(${EMMySQL.GenerateSQLInArray(CUIDs)})`;
-                //             let houseCostMapping = {};
-                //             EMMySQL.Exec(sql).then(
-                //                 data=>{
-                //                     _.each(data, d=>{
-                //                         const deviceId = CUID2DeviceIdMapping[d.sensor];
-                //                         const houseId = deviceId2HouseId[deviceId];
-                //                         const priceObj = housePriceMapping[houseId];
-                //
-                //                         if(!houseCostMapping[houseId]){
-                //                             houseCostMapping[houseId] = [];
-                //                         }
-                //
-                //                         //only electric now
-                //                         const base = new bigdecimal.BigDecimal(d.value);
-                //                         const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
-                //                         const cost = base.multiply(price);
-                //                         houseCostMapping[houseId].push({
-                //                             cost: cost.intValue(),
-                //                             deviceId: deviceId,
-                //                             usage: d.value,
-                //                             price: priceObj.ELECTRIC
-                //                         });
-                //                     });
-                //
-                //                     //make housesBills
-                //                     makeHousesBills(houseCostMapping).then(
-                //                         ()=>{
-                //                             resolve();
-                //                         }
-                //                     );
-                //                 }
-                //             );
-                //         }
-                //     );
             }
         );
     });
