@@ -3,7 +3,7 @@ const moment = require('moment');
 const fp = require('lodash/fp');
 const bigdecimal = require('bigdecimal');
 
-async function Pay(userId, amount) {
+async function Pay(userId, amount, t, payAble) {
 
     const MAX_LOCK = 4294967000;
 
@@ -17,18 +17,27 @@ async function Pay(userId, amount) {
         return ErrorCode.ack(ErrorCode.USERNOTEXISTS);
     }
 
+    if(payAble && cashAccount.balance+amount < 0){
+        return ErrorCode.ack(ErrorCode.CASHNOTENOUGH);
+    }
+
     try {
-        const result = await MySQL.CashAccount.update(
-            {
-                cash: MySQL.Literal(`cash+${amount}`),
-                locker: cashAccount.locker > MAX_LOCK ? 1: MySQL.Literal(`locker+1`)
-            },
+        const options = _.assign(
             {
                 where: {
                     userId: userId,
                     locker: cashAccount.locker
                 }
-            }
+            },
+            t ? {transaction: t} : {}
+        );
+
+        const result = await MySQL.CashAccount.update(
+            {
+                balance: MySQL.Literal(`balance+${amount}`),
+                locker: cashAccount.locker > MAX_LOCK ? 1: MySQL.Literal(`locker+1`)
+            },
+            options
         );
         if(!result || !result[0]){
             //save failed
@@ -50,13 +59,15 @@ async function Pay(userId, amount) {
 }
 
 
-exports.PayWithOwed = async(userId, amount)=>{
-
+exports.PayWithOwed = async(userId, amount, t, payAble)=>{
     let count = 4;
     let ret;
     do {
-        ret = await Pay(userId, amount);
-    }while(count && ret.code !== ErrorCode.OK);
+        ret = await Pay(userId, amount, t, payAble);
+        if(payAble && ret.code === ErrorCode.CASHNOTENOUGH){
+            break;
+        }
+    }while( count && ret.code !== ErrorCode.OK );
 
     return ret;
 };

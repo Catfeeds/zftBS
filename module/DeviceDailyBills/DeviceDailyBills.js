@@ -65,7 +65,7 @@ function generateProject(projectId, setting, time) {
 
                     log.info('devicePrePaid: ', userId, prePaidObj, prePaidFlow);
 
-                    Util.PayWithOwed(userId, devicePrePaid.amount).then(
+                    Util.PayWithOwed(userId, -devicePrePaid.amount).then(
                         ret=>{
                             if(ret.code !== ErrorCode.OK ){
                                 log.error('PayWithOwed failed', userId, devicePrePaid, roomId, ret);

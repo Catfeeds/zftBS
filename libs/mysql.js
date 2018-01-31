@@ -627,7 +627,7 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false,
         },
-        cash: {
+        balance: {
             type: Sequelize.BIGINT,
             defaultValue: 0
         },
@@ -805,6 +805,118 @@ function SequelizeDefine()
     exports.Contracts.hasMany(exports.Bills);
     exports.Bills.belongsTo(exports.Contracts);
 
+    const FundChannels = sequelizeInstance.define('fundChannels', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
+            primaryKey: true
+        },
+        flow: { //渠道流向(收入/支出)
+            type: Sequelize.STRING(8),
+            allowNull: false,
+            defaultValue: 'receive',
+            validate: {
+                isIn: [['pay', 'receive']]
+            }
+        },
+        projectId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        category:{
+            type: Sequelize.STRING(10),
+            allowNull: false
+        },
+        tag:{   //渠道标识 alipay/wx/wx_pub/manual
+            type: Sequelize.STRING(8),
+            allowNull: false
+        },
+        name: { //渠道名称 支付宝/微信/微信公众号/人工充值
+            type: Sequelize.STRING(8),
+            allowNull: false
+        },
+        status:{    //PENDING/PASSED/DELETED/PAUSE
+            type: Sequelize.STRING(8),
+            allowNull: false,
+            defaultValue: 'PENDING'
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+    exports.FundChannels = FundChannels;
+
+    exports.Flows = sequelizeInstance.define('flows', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            primaryKey: true
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        category:{
+            type: Sequelize.STRING,  //项目ID
+            allowNull: false,
+            defaultValue: 'rent',
+            validate: {
+                isIn: [['rent', 'final', 'topup']]
+            }
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+
+    exports.FundChannelFlows = sequelizeInstance.define('fundChannelFlows', {
+        id:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            primaryKey: true,
+        },
+        category:{
+            type: Sequelize.STRING(16),
+            allowNull: false
+        },
+        orderNo:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        billId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: true
+        },
+        // topupId:{
+        //     type: Sequelize.BIGINT.UNSIGNED,
+        //     allowNull: true
+        // },
+        projectId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false,
+        },
+        fundChannelId:{
+            type: Sequelize.BIGINT.UNSIGNED,    //渠道ID
+            allowNull: false
+        },
+        from: {
+            type: Sequelize.BIGINT.UNSIGNED,    //资金来源
+            allowNull: false
+        },
+        to: {
+            type: Sequelize.BIGINT.UNSIGNED,    //资金去向
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.BIGINT,          //金额
+            allowNull: false
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+
     const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
@@ -959,38 +1071,46 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,  //项目ID
             allowNull: false
         },
-		amount: {
-			type: Sequelize.BIGINT.UNSIGNED,    //金额 单位：分
-			allowNull: false,
-			defaultValue: 0
-		},
-        paymentChannel: {
-            type: Sequelize.STRING(20),    // 支付渠道
+        orderNo:{
+            type: Sequelize.BIGINT.UNSIGNED,  //订单号
+            allowNull: false
+        },
+        flowId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //流水ID
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.BIGINT.UNSIGNED,    //金额 单位：分
             allowNull: false,
-            defaultValue: 'cash',
-			validate: {
-				isIn: [['cash', 'wechat', 'alipay']]
-			}
+            defaultValue: 0
+        },
+        fundChannelId: {
+            type: Sequelize.BIGINT.UNSIGNED,    //资金渠道
+            allowNull: false
         },
         operator: {
             type: Sequelize.BIGINT.UNSIGNED,    // 经办人
             allowNull: true
         },
-        createdAt: {
-            type: Sequelize.BIGINT.UNSIGNED,    // 创建时间
+        paidAt: {
+            type: Sequelize.BIGINT.UNSIGNED,    // 支付发生时间
             allowNull: false,
             defaultValue: 0
         },
-		status: {
-			type: Sequelize.STRING(10),    //状态
-			allowNull: false,
-			defaultValue: 'pending',
-			validate: {
-				isIn: [['pending', 'approved', 'declined']]
-			}
-		}
-    },{
-        timestamps: false,
+        remark: {
+            type: Sequelize.TEXT    // 备注
+        },
+        status: {
+            type: Sequelize.STRING(10),    //状态
+            allowNull: false,
+            defaultValue: 'pending',
+            validate: {
+                isIn: [['pending', 'approved', 'declined']]
+            }
+        }
+    }, {
+        timestamps: true,
+        paranoid: true,
         freezeTableName: true
     });
 

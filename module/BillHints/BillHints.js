@@ -108,7 +108,7 @@ exports.Run = ()=>{
                 let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
-                if(timePoint === '0100'){
+                if(timePoint === '1700'){
                     //
                     if(!lastPaymentTime || lastPaymentTime.format('YYYYMMDD') !== m.format("YYYYMMDD")){
                         lastPaymentTime = moment(m);
@@ -127,4 +127,4 @@ exports.Run = ()=>{
     tryHints();
 };
 
-exports.ModuleName = 'HousesBills';
+exports.ModuleName = 'BillHints';
