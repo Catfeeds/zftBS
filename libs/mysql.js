@@ -808,8 +808,11 @@ function SequelizeDefine()
     const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
-            autoIncrement: true,
             primaryKey: true
+        },
+        flowId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
         },
         type:{
             type: Sequelize.STRING(16),
@@ -854,6 +857,66 @@ function SequelizeDefine()
         freezeTableName: true
     });
     exports.DevicePrePaid = devicePrePaid;
+    const dailyPrePaid = sequelizeInstance.define('dailyPrePaid', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            primaryKey: true
+        },
+        flowId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        configId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        contractId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.INTEGER,    //单位分
+            allowNull: false,
+            defaultValue: 0
+        },
+        createdAt:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+    exports.DailyPrePaid = dailyPrePaid;
+
+    const prePaidFlows = sequelizeInstance.define('prePaidFlows', {
+        id: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            primaryKey: true
+        },
+        projectId:{
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        category:{
+            type: Sequelize.STRING(8),
+            allowNull: false,
+            validate: {
+                isIn: [['device', 'daily']]
+            }
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
+    exports.PrePaidFlows = prePaidFlows;
+    // prePaidFlows.hasOne(devicePrePaid);
+    // prePaidFlows.hasOne(dailyPrePaid);
 
     exports.BillFlows = sequelizeInstance.define('billflows', {
         billId: {
@@ -1317,6 +1380,34 @@ function SequelizeDefine()
             freezeTableName: true
         }
     );
+
+    exports.HouseApportionment = sequelizeInstance.define('houseApportionment', {
+        id:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        projectId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false,
+        },
+        houseId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        roomId:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        value: {
+            type: Sequelize.BOOLEAN,
+            allowNull: false
+        }
+    },{
+        timestamps: true,
+        paranoid: true,
+        freezeTableName: true
+    });
 }
 
 function EMDefine()

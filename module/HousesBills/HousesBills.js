@@ -59,146 +59,11 @@ function generateProject(projectId, time) {
         });
     };
 
-    const timeStamp = time.unix();
     return new Promise((resolve, reject)=>{
-        MySQL.Houses.findAll({
-            where:{
-                projectId: projectId,
-                status:{$ne: 'DELETED'}
-            },
-            include:[
-                {
-                    model: MySQL.HouseDevicePrice,
-                    as: 'prices',
-                    where:{
-                        category: 'HOST'
-                    },
-                    attributes: ['sourceId', 'category', 'type', 'price']
-                },
-                {
-                    model: MySQL.HouseDevices,
-                    as: 'devices',
-                    attributes:['deviceId', 'startDate', 'endDate'],
-                    where:{
-                        endDate: {$or:[
-                            {$eq: 0},
-                            {$lte: timeStamp}
-                        ]}
-                    }
-                }
-            ]
-        }).then(
+        Util.getHouses(projectId, time, 'HOST').then(
             houses=>{
-                const deviceIds = _.flattenDeep(fp.map(house=>{
-                    return fp.map(dev=>{
-                        return dev.deviceId;
-                    })(house.devices);
-                })(houses));
-
-                const housePriceMapping = _.fromPairs(fp.map(house=>{
-                    return [
-                        house.id, _.fromPairs(fp.map(price=>{
-                                return [price.type, price.price]
-                            })(house.prices))
-                    ];
-                })(houses));
-
-                const deviceId2HouseId = _.fromPairs(_.flatten(fp.map(house=>{
-                    return fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
-                })(houses)));
-
-
-                const from = moment(time).subtract(1, 'days').endOf('days').unix();
-                MySQL.DevicesData.findAll({
-                    where:{
-                        deviceId:{$in: deviceIds},
-                        time:{$between:[from, timeStamp]}
-                    },
-                    attributes:['deviceId', 'channelId', 'reading', 'rateReading', 'time'],
-                    order:[['time', 'asc']]
-                }).then(
-                    devicesData=>{
-                        let dataMapping = {};
-                        _.each(devicesData, data=>{
-                            const deviceId = data.deviceId;
-                            const channelId = data.channelId;
-
-                            if(!dataMapping[deviceId]){
-                                dataMapping[deviceId] = {};
-                            }
-
-                            if(!dataMapping[deviceId][channelId]){
-                                dataMapping[deviceId][channelId] = [];
-                            }
-
-                            dataMapping[deviceId][channelId].push({
-                                rateReading: data.rateReading,
-                                reading: data.reading,
-                                time: data.time
-                            });
-                        });
-
-                        //calculate device usage
-                        let houseCostMapping = {};
-                        _.each(houses, house=>{
-                            _.each(house.devices, device=>{
-                                const deviceId = device.deviceId;
-                                if( !dataMapping[deviceId] ){
-                                    return;
-                                }
-
-                                if( !dataMapping[deviceId]['11'] ){
-                                    return;
-                                }
-
-                                const dataFilter = (data, endDate)=>{
-                                    return _.compact(fp.map(d=>{
-                                        const isValid = endDate === 0 || d.time<endDate;
-                                        return isValid ? d : null;
-                                    })(data));
-                                };
-                                const calc = (ary)=>{
-                                    let usage = 0;
-                                    for(let i=1; i<ary.length; i++){
-                                        usage += ary[i].rateReading - ary[i-1].rateReading;
-                                    }
-                                    return usage;
-                                };
-                                const getScale = ()=>{
-                                    return _.last(data).reading;
-                                };
-
-                                const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
-                                if(_.isEmpty(data) || data.length === 1){
-                                    log.error(deviceId, ' data is empty or less then 2', data);
-                                    return;
-                                }
-                                const usage = calc(data);
-                                const houseId = deviceId2HouseId[deviceId];
-                                const priceObj = housePriceMapping[houseId];
-                                if(_.isEmpty(priceObj)){
-                                    return;
-                                }
-
-                                //only electric now
-                                const base = new bigdecimal.BigDecimal(usage.toString());
-                                const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
-                                const cost = base.multiply(price);
-                                if(!houseCostMapping[houseId]){
-                                    houseCostMapping[houseId] = [];
-                                }
-                                const houseCost = {
-                                    amount: cost.intValue(),
-                                    scale: getScale(),
-                                    deviceId: deviceId,
-                                    usage: usage,
-                                    price: priceObj.ELECTRIC
-                                };
-                                // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
-                                houseCostMapping[houseId].push(houseCost);
-                            });
-                        });
-
+                Util.dailyDeviceData(houses, time).then(
+                    houseCostMapping=>{
                         // make housesBills
                         makeHousesBills(houseCostMapping).then(
                             ()=>{
@@ -207,6 +72,122 @@ function generateProject(projectId, time) {
                         );
                     }
                 );
+
+                // const deviceIds = _.flattenDeep(fp.map(house=>{
+                //     return fp.map(dev=>{
+                //         return dev.deviceId;
+                //     })(house.devices);
+                // })(houses));
+                //
+                // const housePriceMapping = _.fromPairs(fp.map(house=>{
+                //     return [
+                //         house.id, _.fromPairs(fp.map(price=>{
+                //                 return [price.type, price.price]
+                //             })(house.prices))
+                //     ];
+                // })(houses));
+                //
+                // const deviceId2HouseId = _.fromPairs(_.flatten(fp.map(house=>{
+                //     return fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
+                // })(houses)));
+                //
+                //
+                // const from = moment(time).subtract(1, 'days').endOf('days').unix();
+                //
+                //
+                // MySQL.DevicesData.findAll({
+                //     where:{
+                //         deviceId:{$in: deviceIds},
+                //         time:{$between:[from, timeStamp]}
+                //     },
+                //     attributes:['deviceId', 'channelId', 'reading', 'rateReading', 'time'],
+                //     order:[['time', 'asc']]
+                // }).then(
+                //     devicesData=>{
+                //         let dataMapping = {};
+                //         _.each(devicesData, data=>{
+                //             const deviceId = data.deviceId;
+                //             const channelId = data.channelId;
+                //
+                //             if(!dataMapping[deviceId]){
+                //                 dataMapping[deviceId] = {};
+                //             }
+                //
+                //             if(!dataMapping[deviceId][channelId]){
+                //                 dataMapping[deviceId][channelId] = [];
+                //             }
+                //
+                //             dataMapping[deviceId][channelId].push({
+                //                 rateReading: data.rateReading,
+                //                 reading: data.reading,
+                //                 time: data.time
+                //             });
+                //         });
+                //
+                //         //calculate device usage
+                //         let houseCostMapping = {};
+                //         _.each(houses, house=>{
+                //             _.each(house.devices, device=>{
+                //                 const deviceId = device.deviceId;
+                //                 if( !dataMapping[deviceId] ){
+                //                      return;
+                //                 }
+                //
+                //                 if( !dataMapping[deviceId]['11'] ){
+                //                     return;
+                //                 }
+                //
+                //                 const dataFilter = (data, endDate)=>{
+                //                     return _.compact(fp.map(d=>{
+                //                         const isValid = endDate === 0 || d.time<endDate;
+                //                         return isValid ? d : null;
+                //                     })(data));
+                //                 };
+                //                 const calc = (ary)=>{
+                //                     let usage = 0;
+                //                     for(let i=1; i<ary.length; i++){
+                //                         usage += ary[i].rateReading - ary[i-1].rateReading;
+                //                     }
+                //                     return usage;
+                //                 };
+                //                 const getScale = ()=>{
+                //                     return _.last(data).reading;
+                //                 };
+                //
+                //                 const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
+                //                 if(_.isEmpty(data) || data.length === 1){
+                //                     log.error(deviceId, ' data is empty or less then 2', data);
+                //                     return;
+                //                 }
+                //                 const usage = calc(data);
+                //                 const houseId = deviceId2HouseId[deviceId];
+                //                 const priceObj = housePriceMapping[houseId];
+                //                 if(_.isEmpty(priceObj)){
+                //                     return;
+                //                 }
+                //
+                //                 //only electric now
+                //                 const base = new bigdecimal.BigDecimal(usage.toString());
+                //                 const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
+                //                 const cost = base.multiply(price);
+                //                 if(!houseCostMapping[houseId]){
+                //                     houseCostMapping[houseId] = [];
+                //                 }
+                //                 const houseCost = {
+                //                     amount: cost.intValue(),
+                //                     scale: getScale(),
+                //                     deviceId: deviceId,
+                //                     usage: usage,
+                //                     price: priceObj.ELECTRIC
+                //                 };
+                //                 // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
+                //                 houseCostMapping[houseId].push(houseCost);
+                //             });
+                //         });
+                //
+                //
+                //     }
+                // );
             }
         );
     });

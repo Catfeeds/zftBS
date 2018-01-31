@@ -12,8 +12,13 @@ Include( '/libs/log')("zftBS");
     global.Util = Include('/libs/util');
 }
 
+require('process').on('unhandledRejection', (reason, p) => {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+});
+
 MySQL.Load().then(
     ()=>{
+
         {
             //Run All the Modules
             let baseDir = '/';
