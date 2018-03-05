@@ -10,10 +10,12 @@ function generateProject(projectId, setting, time) {
         const dailyFrom = moment(time).startOf('days').unix();
         const dailyTo = time.unix();
 
+        const paymentDay = parseInt( moment(time).format('YYYYMMDD') );
+
         const deviceFilter = {
             endDate: {$or:[
                 {$eq: 0},
-                {$between: [dailyFrom, dailyTo]}
+                {$gte: dailyFrom}
             ]}
         };
 
@@ -65,7 +67,7 @@ function generateProject(projectId, setting, time) {
 
                     log.info('devicePrePaid: ', userId, prePaidObj, prePaidFlow);
 
-                    Util.PayWithOwed(userId, -devicePrePaid.amount).then(
+                    Util.PayWithOwed(userId, devicePrePaid.amount).then(
                         ret=>{
                             if(ret.code !== ErrorCode.OK ){
                                 log.error('PayWithOwed failed', userId, devicePrePaid, roomId, ret);
@@ -112,6 +114,9 @@ function generateProject(projectId, setting, time) {
                     if(!contract.room){
                         return;
                     }
+
+                    //todo: 是否合同生效当天就进行计费
+
                     const roomId = contract.room.id;
                     const houseId = contract.room.houseId;
 
@@ -132,6 +137,7 @@ function generateProject(projectId, setting, time) {
                             return;
                         }
 
+                        //每日扣费
                         if(expense.frequency === 'day'){
                             dailyPrePaid.push({
                                 roomId: contract.roomId,
@@ -140,10 +146,13 @@ function generateProject(projectId, setting, time) {
                                 contractId: contract.id,
                                 projectId: projectId,
                                 configName: setting[expense.configId].key,
-                                amount: expense.rent
+                                paymentDay: paymentDay,
+                                amount: expense.rent,
+                                createdAt: moment().unix()
                             });
                         }
                         else{
+                            //如果合同中有单价，则优先使用合同中的单价
                             switch(expense.configId){
                                 case 1041:
                                 {
@@ -176,10 +185,9 @@ function generateProject(projectId, setting, time) {
                 ]).then(
                     result=>{
                         const houses = result[0];
-                        const apportionments = result[1];
 
                         let houseApportionment = {};
-                        _.each(apportionments, apportionment=>{
+                        _.each(result[1], apportionment=>{
                             if(!houseApportionment[apportionment.houseId]){
                                 houseApportionment[apportionment.houseId] = {};
                             }
@@ -187,17 +195,23 @@ function generateProject(projectId, setting, time) {
                             houseApportionment[apportionment.houseId][apportionment.roomId] = apportionment.value;
                         });
 
-                        const getAmount = (cost)=>{
+                        const getAmountAndPrice = (cost)=>{
                             const roomId = deviceId2RoomId[cost.deviceId];
-                            if(!roomDevicePrice[roomId] || !roomDevicePrice[roomId][cost.deviceId]){
-                                return cost.amount;
+                            if(!roomDevicePrice[roomId]){
+                                return {
+                                    amount: cost.amount,
+                                    price: cost.price
+                                };
                             }
                             else{
-                                const price = roomDevicePrice[roomId][cost.deviceId];
+                                const price = roomDevicePrice[roomId].ELECTRIC;
                                 const amount = (new bigdecimal.BigDecimal(cost.usage.toString()))
                                     .multiply( new bigdecimal.BigDecimal(price.toString()) )
                                     .divide( new bigdecimal.BigDecimal('10000'), 0, bigdecimal.RoundingMode.DOWN() ).intValue();
-                                return amount;
+                                return {
+                                    amount: amount,
+                                    price: price
+                                };
                             }
                         };
                         const getApportionment = (houseId)=>{
@@ -215,7 +229,7 @@ function generateProject(projectId, setting, time) {
                                 _.each(houseCostMapping, costs=>{
                                     _.each(costs, cost=>{
                                         //
-                                        const amount = getAmount(cost);
+                                        const amountAndPrice = getAmountAndPrice(cost);
                                         const roomId = deviceId2RoomId[cost.deviceId];
 
                                         if(cost.public){
@@ -223,9 +237,9 @@ function generateProject(projectId, setting, time) {
                                             const apportionment = getApportionment(cost.houseId);
                                             _.map(apportionment, (percent, roomId)=>{
                                                 const amountOfShare = (
-                                                    new bigdecimal.BigDecimal(amount.toString())
+                                                    new bigdecimal.BigDecimal(amountAndPrice.amount.toString())
                                                 ).multiply(new bigdecimal.BigDecimal(percent.toString())
-                                                ).divide(new bigdecimal.BigDecimal('100'), 0, bigdecimal.RoundingMode.DOWN()).intValue();
+                                                ).divide(new bigdecimal.BigDecimal('100'), 0, bigdecimal.RoundingMode.HALF_UP()).intValue();
                                                 const devicePrePaid = {
                                                     type: 'ELECTRICITY',
                                                     contractId: roomId2ContractId[roomId],
@@ -234,6 +248,9 @@ function generateProject(projectId, setting, time) {
                                                     amount: -amountOfShare,
                                                     scale: cost.scale,
                                                     usage: cost.usage,
+                                                    price: amountAndPrice.price,
+                                                    share: percent,
+                                                    paymentDay: paymentDay,
                                                     createdAt: moment().unix()
                                                 };
                                                 payDevice(devicePrePaid, roomId);
@@ -246,9 +263,11 @@ function generateProject(projectId, setting, time) {
                                                 contractId: roomId2ContractId[roomId],
                                                 projectId: projectId,
                                                 deviceId: cost.deviceId,
-                                                amount: -amount,
+                                                amount: -amountAndPrice.amount,
                                                 scale: cost.scale,
                                                 usage: cost.usage,
+                                                price: amountAndPrice.price,
+                                                paymentDay: paymentDay,
                                                 createdAt: moment().unix()
                                             };
                                             payDevice(devicePrePaid, roomId);
@@ -262,6 +281,8 @@ function generateProject(projectId, setting, time) {
                                 _.each(dailyPrePaid, daily=>{
                                     payDaily(daily);
                                 });
+
+                                resolve();
                             },
                             err=>{
                                 log.error(err, houses, time);
@@ -292,6 +313,62 @@ function generate(projects, setting, time) {
     generateProject(project.id, setting, time).then(
         ()=>{
             next();
+        }
+    );
+}
+
+function batchBill() {
+    const timeFrom = moment('2017 0701 0100', 'YYYY MMDD HHmm');
+    // const timeTo = moment('2018 0220 0100', 'YYYY MMDD HHmm');
+    const timeTo = moment('2017 1231 0100', 'YYYY MMDD HHmm');
+
+    Promise.all([
+        MySQL.Settings.findAll({}),
+        MySQL.Projects.findAll({})
+    ]).then(
+        result=>{
+            const setting = _.fromPairs(fp.map(setting=>{
+                return [setting.id, setting]
+            })(result[0]));
+
+            // generate( result[1], setting, m );
+            
+            const doBill = (timeIndex)=>{
+                if(timeIndex.unix() > timeTo.unix()){
+                    return log.warn('done...');
+                }
+
+                const nextTime = ()=>{
+                    return setImmediate(()=>{
+                        doBill(timeIndex.add(1, 'days'));
+                    });
+                };
+                const projectsBill = (projects)=>{
+                    if(!projects.length){
+                        log.info('done ', timeIndex.format('YYYYMMDD'));
+                        return nextTime();
+                    }
+
+                    const next = ()=>{
+                        return setImmediate(()=>{
+                            projectsBill(_.tail(projects));
+                        })
+                    };
+
+                    const project = _.head(projects);
+                    generateProject(project.id, setting, timeIndex).then(
+                        ()=>{
+                            log.info(project.name, 'done');
+                            next();
+                        }
+                    );
+                };
+
+                log.info('doing ', timeIndex.format('YYYYMMDD'));
+                projectsBill(result[1]);
+            };
+
+            doBill(timeFrom);
         }
     );
 }
@@ -330,7 +407,8 @@ exports.Run = ()=>{
             }, 1000 * 60);
         }, 0);
     };
-    tryPayment();
+    // tryPayment();
+    // batchBill();
 };
 
 exports.ModuleName = 'DeviceDailyBills';

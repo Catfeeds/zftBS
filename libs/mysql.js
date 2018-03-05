@@ -964,6 +964,10 @@ function SequelizeDefine()
             allowNull: false,
             defaultValue: 100
         },
+        paymentDay: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
         createdAt:{
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
@@ -998,6 +1002,10 @@ function SequelizeDefine()
             type: Sequelize.INTEGER,    //单位分
             allowNull: false,
             defaultValue: 0
+        },
+        paymentDay: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
         },
         createdAt:{
             type: Sequelize.BIGINT.UNSIGNED,
@@ -1561,24 +1569,6 @@ function SequelizeDefine()
         freezeTableName: true
     });
 }
-
-function EMDefine()
-{
-    let EM = {};
-
-}
-
-
-//获取数据表名称
-exports.DataCollectionName = function (time)
-{
-    return "daily" + time.format("YYYYMM");
-};
-//获取计费日志表名称
-exports.PaymentTableName = function (time)
-{
-    return "paymentlog"+ time.format("YYYYMM");
-};
 
 /*
  * 数组转换成 SQL 语句 IN 适用的
