@@ -45,22 +45,21 @@ async function Pay(userId, amount, t, payAble) {
         }
     }
     catch(err){
-        log.error('pay error', userId, amount, err);
-
         if(err.message === ErrorCode.LOCKDUMPLICATE.toString()){
             return ErrorCode.ack(ErrorCode.LOCKDUMPLICATE);
         }
         else {
+            log.error('pay error', userId, amount, err);
             return ErrorCode.ack(ErrorCode.DATABASEEXEC);
         }
     }
 
-    return ErrorCode.ack(ErrorCode.OK, {balance: cashAccount.cash + amount, amount: amount, userId: userId});
+    return ErrorCode.ack(ErrorCode.OK, {balance: cashAccount.balance + amount, amount: amount, userId: userId});
 }
 
 
 exports.PayWithOwed = async(userId, amount, t, payAble)=>{
-    let count = 4;
+    let count = 8;
     let ret;
     do {
         ret = await Pay(userId, amount, t, payAble);
@@ -74,6 +73,7 @@ exports.PayWithOwed = async(userId, amount, t, payAble)=>{
 
 exports.getHouses = async(projectId, time, category, houseIds)=>{
     const timeStamp = time.unix();
+    const preDay = moment(time).subtract(1, 'days').startOf('days').unix();
 
     const where = _.assign(
         {
@@ -92,17 +92,21 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
                 where:{
                     category: category
                 },
-                attributes: ['sourceId', 'category', 'type', 'price']
+                required: false,
+                attributes: ['houseId', 'category', 'type', 'price']
             },
             {
                 model: MySQL.HouseDevices,
                 as: 'devices',
                 attributes:['deviceId', 'startDate', 'endDate', 'public'],
                 where:{
-                    endDate: {$or:[
-                        {$eq: 0},
-                        {$lte: timeStamp}
-                    ]}
+                    endDate: {
+                        $or:[
+                            {$eq: 0},
+                            {$gte: preDay}
+                        ]
+                    },
+                    startDate: {$lte: timeStamp}
                 }
             }
         ]
@@ -125,10 +129,10 @@ exports.dailyDeviceData = (houses, time)=>{
         return fp.map(dev=>{
             return dev.deviceId;
         })(house.devices);
-    })(houses));
+    })(houses)); 
 
-    const from = moment(time).subtract(1, 'days').endOf('days').unix();
-    const timeStamp = time.unix();
+    const from = moment(time).subtract(2, 'days').endOf('days').unix();
+    const timeStamp = moment(time).subtract(1, 'days').endOf('days').unix();
 
     return new Promise((resolve, reject)=>{
         MySQL.DevicesData.findAll({
@@ -198,14 +202,12 @@ exports.dailyDeviceData = (houses, time)=>{
                         const usage = calc(data);
                         const houseId = deviceId2HouseId[deviceId];
                         const priceObj = housePriceMapping[houseId];
-                        if (_.isEmpty(priceObj)) {
-                            return;
-                        }
 
                         //only electric now
                         const base = new bigdecimal.BigDecimal(usage.toString());
-                        const price = new bigdecimal.BigDecimal(priceObj.ELECTRIC.toString());
+                        const price = new bigdecimal.BigDecimal(_.get(priceObj, 'ELECTRIC', 0).toString());
                         const cost = base.multiply(price).divide(new bigdecimal.BigDecimal('10000'), 0, bigdecimal.RoundingMode.DOWN());
+
                         if (!houseCostMapping[houseId]) {
                             houseCostMapping[houseId] = [];
                         }
@@ -216,7 +218,7 @@ exports.dailyDeviceData = (houses, time)=>{
                             public: device.public,
                             deviceId: deviceId,
                             usage: usage,
-                            price: priceObj.ELECTRIC
+                            price: _.get(priceObj, 'ELECTRIC', 0)
                         };
                         // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
                         houseCostMapping[houseId].push(houseCost);

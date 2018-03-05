@@ -2,7 +2,6 @@ const Q = require('q');
 const _  = require('underscore');
 const Sequelize = require('sequelize');
 const moment = require('moment');
-const UUID = require('uuid');
 const config = require('config');
 
 let connection;
@@ -26,15 +25,16 @@ exports.Load = () => {
                 read: read,
                 write: write
             },
-            logging: true,
+            logging: false,
             timezone: "+08:00",
             retry:{
                 max: 0
             },
             pool:{
-                maxConnections: 20,
-                minConnections: 5,
-                maxIdleTime: 1000
+                max: 50,
+                min: 5,
+                idle: 20000,
+                acquire: 20000
             }
         });
 		sequelizeInstance.authenticate().then(
@@ -955,6 +955,10 @@ function SequelizeDefine()
             type: Sequelize.BIGINT,
             allowNull: false
         },
+        price: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
         share: {
             type: Sequelize.INTEGER,
             allowNull: false,
@@ -1204,14 +1208,14 @@ function SequelizeDefine()
         },
         projectId:{
             type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: true
+            allowNull: false
         },
         category:{
             type: Sequelize.STRING(8),
             allowNull: false,
             defaultValue: 'HOST'
         },
-        sourceId:{
+        houseId:{
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false,
         },
@@ -1221,6 +1225,15 @@ function SequelizeDefine()
         },
         price: {
             type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        startDate:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false,
+        },
+        endDate: {
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false,
             defaultValue: 0
         }
@@ -1233,7 +1246,7 @@ function SequelizeDefine()
     Houses.hasMany(HouseDevices, {as: 'devices', foreignKey: 'sourceId'});
     Rooms.hasMany(HouseDevices, {as: 'devices', foreignKey: 'sourceId'});
     HouseDevices.hasMany(HouseDevicePrice, {as: 'devicePrice', foreignKey: 'sourceId'});
-    Houses.hasMany(HouseDevicePrice, {as: 'prices', foreignKey: 'sourceId'});
+    Houses.hasMany(HouseDevicePrice, {as: 'prices', foreignKey: 'houseId'});
 
     exports.HouseDevices = HouseDevices;
     exports.HouseDevicePrice = HouseDevicePrice;
@@ -1241,20 +1254,31 @@ function SequelizeDefine()
     const Projects = sequelizeInstance.define('projects', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
-            autoIncrement: true,
             primaryKey: true
         },
-        pid: {
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
+        logoUrl: {
+            type: Sequelize.STRING(255),     //logo image url
+            allowNull: true
         },
-        externalId: {
-            type: Sequelize.STRING(32),
-            allowNull: false
+        name: {
+            type: Sequelize.STRING(32),     //公寓名称
+            allowNull: true,
         },
-
+        address: {
+            type: Sequelize.STRING(255),     //公寓地址
+            allowNull: true,
+        },
+        description: {
+            type: Sequelize.TEXT,     //公寓介绍
+            allowNull: true
+        },
+        telephone: {
+            type: Sequelize.STRING(20),     //telephone number
+            allowNull: true
+        }
     },{
-        timestamps: false,
+        timestamps: true,
+        paranoid: true,
         freezeTableName: true
     });
     exports.Projects = Projects;
@@ -1283,8 +1307,12 @@ function SequelizeDefine()
             allowNull: false,
             defaultValue: 0
         },
-        createdAt: {
+        paymentDay: {
             type: Sequelize.INTEGER,
+            allowNull: false
+        },
+        createdAt: {
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         }
     },{
@@ -1323,8 +1351,12 @@ function SequelizeDefine()
             type: Sequelize.INTEGER,
             allowNull: false
         },
-        createdAt: {
+        paymentDay: {
             type: Sequelize.INTEGER,
+            allowNull: false
+        },
+        createdAt: {
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         }
     },{
@@ -1536,14 +1568,6 @@ function EMDefine()
 
 }
 
-exports.GenerateFundID = function(uid)
-{
-    var now = moment();
-    var timePrefix = now.format('YYYYMMDDHHmmss');   //14位时间
-    var suffix = UUID.v4(uid+timePrefix).replace(/-/g, '');
-
-    return timePrefix + suffix;
-};
 
 //获取数据表名称
 exports.DataCollectionName = function (time)
