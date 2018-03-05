@@ -174,9 +174,9 @@ exports.Run = ()=>{
             }, 1000 * 60);
         }, 0);
     };
-    // tryPayment();
+    tryPayment();
 
-    batchBill();
+    // batchBill();
 };
 
 exports.ModuleName = 'HousesBills';
