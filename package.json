@@ -26,6 +26,7 @@
     "config": "^1.28.1",
     "flake-idgen": "^1.1.0",
     "include-node": "^0.2.0",
+    "ip": "^1.1.5",
     "lodash": "^4.17.4",
     "moment": "^2.20.1",
     "mongoose": "^4.9.0",
