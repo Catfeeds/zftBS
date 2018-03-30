@@ -965,7 +965,7 @@ function SequelizeDefine()
             defaultValue: 100
         },
         paymentDay: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         },
         createdAt:{
@@ -1004,7 +1004,7 @@ function SequelizeDefine()
             defaultValue: 0
         },
         paymentDay: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false,
         },
         createdAt:{
@@ -1026,13 +1026,21 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,  //项目ID
             allowNull: false
         },
+        contractId: {   //类型关联ID(房源=>contractid)
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: true
+        },
         category:{
             type: Sequelize.STRING(8),
             allowNull: false,
             validate: {
                 isIn: [['device', 'daily']]
             }
-        }
+        },
+        paymentDay: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
     },{
         timestamps: true,
         paranoid: true,
@@ -1316,7 +1324,7 @@ function SequelizeDefine()
             defaultValue: 0
         },
         paymentDay: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         },
         createdAt: {
@@ -1352,7 +1360,7 @@ function SequelizeDefine()
             allowNull: false,
         },
         usage: {
-            type: Sequelize.BIGINT.UNSIGNED,
+            type: Sequelize.BIGINT,
             allowNull: false
         },
         price: {
@@ -1360,7 +1368,7 @@ function SequelizeDefine()
             allowNull: false
         },
         paymentDay: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         },
         createdAt: {

@@ -10,7 +10,7 @@ function generateProject(projectId, setting, time) {
         const dailyFrom = moment(time).startOf('days').unix();
         const dailyTo = time.unix();
 
-        const paymentDay = parseInt( moment(time).format('YYYYMMDD') );
+        const paymentDay = moment(time).unix();
 
         const deviceFilter = {
             endDate: {$or:[
@@ -62,6 +62,8 @@ function generateProject(projectId, setting, time) {
                     const prePaidFlow = {
                         id: flowId,
                         projectId: projectId,
+                        contractId: devicePrePaid.contractId,
+                        paymentDay: devicePrePaid.paymentDay,
                         category: 'device'
                     };
 
@@ -86,6 +88,8 @@ function generateProject(projectId, setting, time) {
                     const prePaidFlow = {
                         id: flowId,
                         projectId: projectId,
+                        contractId: daily.contractId,
+                        paymentDay: daily.paymentDay,
                         category: 'device'
                     };
                     log.info('dailyPrePaid: ', daily.userId, createDaily, prePaidFlow);
@@ -145,7 +149,7 @@ function generateProject(projectId, setting, time) {
                                 configId: expense.configId,
                                 contractId: contract.id,
                                 projectId: projectId,
-                                configName: setting[expense.configId].key,
+                                configName: expense.configId,
                                 paymentDay: paymentDay,
                                 amount: expense.rent,
                                 createdAt: moment().unix()

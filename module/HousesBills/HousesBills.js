@@ -11,7 +11,7 @@ function generateProject(projectId, time) {
             let bulkHousesBills = [];
             let bulkHousesBillFlows = [];
 
-            const paymentDay = time.format('YYYYMMDD');
+            const paymentDay = time.unix();
 
             _.forEach(housesBills, (billFlows, houseId)=>{
                 const billId = SnowFlake.next();
@@ -118,7 +118,7 @@ function bill(time) {
 
 function batchBill() {
     const timeFrom = moment('2017 0701 0100', 'YYYY MMDD HHmm');
-    const timeTo = moment('2018 0220 0100', 'YYYY MMDD HHmm');
+    const timeTo = moment('2018 0315 0100', 'YYYY MMDD HHmm');
 
     MySQL.Projects.findAll({}).then(
         projects=>{
