@@ -309,7 +309,7 @@ function generate(projects, setting, time) {
 
     const next = ()=>{
         return setImmediate(()=>{
-            generate(_.tail(projects));
+            generate(_.tail(projects), setting, time);
         })
     };
 
@@ -383,7 +383,7 @@ exports.Run = ()=>{
     {
         setTimeout(function(){
             setTimeout(function(){
-                // let m = moment('2017 1227 0800', 'YYYY MMDD HHmm');
+                // let m = moment('2018 0428 0800', 'YYYY MMDD HHmm');
                 let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
