@@ -98,6 +98,7 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
             {
                 model: MySQL.HouseDevices,
                 as: 'devices',
+                required: false,
                 attributes:['deviceId', 'startDate', 'endDate', 'public'],
                 where:{
                     endDate: {
@@ -108,6 +109,18 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
                     },
                     startDate: {$lte: timeStamp}
                 }
+            },
+            {
+                model: MySQL.Rooms,
+                as: 'rooms',
+                requried: false,
+                include:[
+                  {
+                    model: MySQL.HouseDevices,
+                    as: 'devices',
+                    required: true
+                  }
+                ]
             }
         ]
     })
@@ -115,20 +128,33 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
 
 exports.dailyDeviceData = (houses, time)=>{
 
-    const deviceId2HouseId = _.fromPairs(_.flatten(fp.map(house=>{
-        return fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
+    const deviceId2HouseId = fp.fromPairs(_.flatten(fp.map(house=>{
+        const houseDev = fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
+        const roomDev = fp.flatten(fp.map(room=>{
+                    fp.map(dev=>{
+                        return [dev.deviceId, house.id];
+                    })(room.devices);
+                })(house.rooms));
+        return [houseDev, roomDev];
     })(houses)));
-    const housePriceMapping = _.fromPairs(fp.map(house=>{
+    const housePriceMapping = fp.fromPairs(fp.map(house=>{
         return [
             house.id, _.fromPairs(fp.map(price=>{
                 return [price.type, price.price]
             })(house.prices))
         ];
     })(houses));
-    const deviceIds = _.flattenDeep(fp.map(house=>{
-        return fp.map(dev=>{
-            return dev.deviceId;
-        })(house.devices);
+    const deviceIds = fp.flattenDeep(fp.map(house=>{
+        return [
+            fp.map(dev=>{
+                return dev.deviceId;
+            })(house.devices)
+            ,fp.map(room=>{
+                fp.map(dev=>{
+                    return dev.deviceId;
+                })(room.devices);
+            })(house.rooms)
+        ];
     })(houses)); 
 
     const from = moment(time).subtract(2, 'days').endOf('days').unix();

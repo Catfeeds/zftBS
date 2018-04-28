@@ -89,7 +89,7 @@ function generate(projects, time) {
 
     const next = ()=>{
         return setImmediate(()=>{
-            generate(_.tail(projects));
+            generate(_.tail(projects), time);
         })
     };
 

@@ -84,7 +84,7 @@ function generateProject(projectId, time, agentFundChannel) {
 
 function generate(projects, time, agentFundChannel) {
     if(!projects.length){
-        return log.warn('HousesBills Done...')
+        return log.warn('billPayment Done...')
     }
 
     const next = ()=>{

@@ -25,7 +25,7 @@ exports.Load = () => {
                 read: read,
                 write: write
             },
-            logging: false,
+            logging: true,
             timezone: "+08:00",
             retry:{
                 max: 0
