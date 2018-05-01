@@ -1,0 +1,43 @@
+version: '3.4'
+
+services:
+    db:
+        image: mysql:5.7
+        restart: always
+        command: --init-file /db/init.sql --character-set-server=utf8 --explicit_defaults_for_timestamp --sql-mode=""
+        environment:
+          - MYSQL_ROOT_PASSWORD=example
+          - TZ=Asia/Shanghai
+        ports:
+          - "33061:3306"
+        volumes:
+          - "./db:/db"
+
+    redis:
+        image: registry.docker-cn.com/library/redis:4
+        restart: always
+        ports:
+          - 6379:6379
+    api:
+        build:
+          context: .
+          dockerfile: Dockerfile-dev
+        entrypoint: /wait-for-it.sh db:3306 --
+        command: npm run dev
+        ports:
+          - 8000:8000
+        volumes:
+          - ".:/src"
+          - "./node_modules:/src/node_modules"
+        environment:
+          - TZ=Asia/Shanghai
+          - ZFT_AMAP_KEY
+          - RDS_READ=[{"host":"db","port":3306,"username":"root","password":"example","database":"zft"}]
+          - RDS_WRITE={"host":"db","port":3306,"username":"root","password":"example","database":"zft"}
+          - REDIS_HOST=redis
+          - REDIS_PORT=6379
+          - REDIS_PASSWD=
+          - ENV
+        depends_on:
+          - db
+          - redis

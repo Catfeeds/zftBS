@@ -1,0 +1,20 @@
+FROM node:8.9.1-slim
+
+RUN apt-get update && apt-get install tzdata
+
+RUN mkdir /src
+
+RUN npm install nodemon -g
+
+WORKDIR /src
+ADD package.json /src/package.json
+RUN npm install
+
+ADD nodemon.json /src/nodemon.json
+
+ADD deploy/wait-for-it.sh /wait-for-it.sh
+RUN chmod a+x /wait-for-it.sh
+
+EXPOSE 8000
+
+CMD npm run dev
