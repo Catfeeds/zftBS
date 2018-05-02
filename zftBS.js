@@ -1,6 +1,5 @@
 require('include-node');
-const config = require('config');
-const _ = require('lodash');
+const fp = require('lodash/fp');
 Include( '/libs/log')('zftBS');
 const {job: cronJob} = require('./libs/cronJob');
 
@@ -35,7 +34,7 @@ MySQL.Load().then(
             }
 
             if(files){
-                _.each(files, function(basename){
+                fp.each((basename) => {
                     //
                     let newSubPath = path.join(modulePath, basename);
                     let moduleName = path.join(newSubPath, path.basename(newSubPath));
@@ -49,7 +48,7 @@ MySQL.Load().then(
                     catch(e){
                         log.error(moduleName, 'load error', e);
                     }
-                });
+                })(files);
             }
         }
     }

@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const config = require('config');
 const messageQueue = Include('/libs/messageQueue');
 
@@ -6,22 +5,22 @@ exports = module.exports = function(){};
 
 const BROADCAST_TOPIC = 'BROADCAST';
 
-let productorBroadcast;
+let producerBroadcast;
 
 exports.Run = function()
 {
-    const productorBroadCastName = `${BROADCAST_TOPIC}_${config.env}`;
-    productorBroadcast = messageQueue.alloc(
-        productorBroadCastName
+    const producerBroadCastName = `${BROADCAST_TOPIC}_${config.env}`;
+    producerBroadcast = messageQueue.alloc(
+        producerBroadCastName
         , config.redis_host
         , config.redis_port
         , config.redis_passwd
     );
-    productorBroadcast.bind(productorBroadCastName);
+    producerBroadcast.bind(producerBroadCastName);
 };
 
 exports.BroadCast = (message)=>{
-    productorBroadcast.publish(message);
+    producerBroadcast.publish(message);
 };
 
 exports.ModuleName = 'MQ';

@@ -1,14 +1,11 @@
 const Q = require('q');
 const _  = require('underscore');
 const Sequelize = require('sequelize');
-const moment = require('moment');
 const config = require('config');
 
-let connection;
-let pool;
 let sequelizeInstance;
 
-exports = module.exports = function(host, port, user, passwd, database, isReadOnly){
+exports = module.exports = function(){
 };
 
 exports.Literal = (str)=>{
@@ -38,7 +35,7 @@ exports.Load = () => {
             }
         });
         sequelizeInstance.authenticate().then(
-            function (err) {
+            function () {
                 log.info('RDS EM Connection Successful...');
                 resolve();
 
@@ -84,7 +81,6 @@ exports.Exec = function(sql, replacements)
             break;
         default:
             return null;
-            break;
         }
     }
 
@@ -498,77 +494,77 @@ function SequelizeDefine()
         roomId: {
             type: Sequelize.BIGINT.UNSIGNED,     //房源ID
             allowNull: false,
-            defaultValue: 0
+            defaultValue: 0,
         },
         projectId: {    //项目ID
             type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
+            allowNull: false,
         },
         userId: {
             type: Sequelize.BIGINT.UNSIGNED,     //用户ID
             allowNull: false,
-            defaultValue: 0
+            defaultValue: 0,
         },
         from: {
             type: Sequelize.BIGINT.UNSIGNED,     //起租时间
             allowNull: false,
-            defaultValue: 0
+            defaultValue: 0,
         },
         to: {
             type: Sequelize.BIGINT.UNSIGNED,     //到期时间
             allowNull: false,
-            defaultValue: 0
+            defaultValue: 0,
         },
         strategy: {
             type: Sequelize.TEXT,   //付款方式
-            get: function(){
+            get: function() {
                 let strategy;
-                try{
+                try {
                     strategy = JSON.parse(this.getDataValue('strategy'));
                 }
-                catch(e){
+                catch (e) {
                     strategy = {};
                 }
                 return strategy;
             },
-            set : function (value) {
+            set: function(value) {
                 this.setDataValue('strategy', JSON.stringify(value));
-            }
+            },
         },
         expenses: {
             type: Sequelize.TEXT,   //加收费用
-            get: function(){
+            get: function() {
                 let expenses;
-                try{
+                try {
                     expenses = JSON.parse(this.getDataValue('expenses'));
                 }
-                catch(e){
+                catch (e) {
                     expenses = {};
                 }
                 return expenses;
             },
-            set : function (value) {
+            set: function(value) {
                 this.setDataValue('expenses', JSON.stringify(value));
-            }
+            },
         },
-	    contractNumber: {
+        contractNumber: {
             type: Sequelize.STRING(50),      //合同号
             allowNull: false,
-		    defaultValue: ''
+            defaultValue: '',
         },
-	    paymentPlan: {
+        paymentPlan: {
             type: Sequelize.STRING(3),      //支付时间 (账单提前-02/账单固定+02/账单前一个月固定F03)
-            allowNull: false
+            allowNull: false,
         },
-	    signUpTime: {
+        signUpTime: {
             type: Sequelize.BIGINT.UNSIGNED,    //签约时间
             allowNull: false,
-            defaultValue: 0
-        }
-    },{
+            defaultValue: 0,
+        },
+    }, {
         timestamps: true,
         paranoid: true,
-        freezeTableName: true
+        freezeTableName: true,
     });
 
     Rooms.hasMany(Contracts, {as: 'contracts', foreignKey:'roomId'});
