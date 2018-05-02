@@ -2,6 +2,7 @@ require('include-node');
 const config = require('config');
 const _ = require('lodash');
 Include( '/libs/log')("zftBS");
+const {job: cronJob} = require('./libs/cronJob');
 
 {
     global.MySQL = Include('/libs/mysql');
@@ -18,7 +19,7 @@ require('process').on('unhandledRejection', (reason, p) => {
 
 MySQL.Load().then(
     ()=>{
-
+        cronJob();
         {
             //Run All the Modules
             let baseDir = '/';
