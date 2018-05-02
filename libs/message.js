@@ -1,6 +1,5 @@
 const moment = require('moment');
 const fp = require('lodash/fp');
-const _ = require('lodash');
 
 const MessageType = {
     NTF_BALANCEINSUFFICIENT: 5300,  //余额不足

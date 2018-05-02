@@ -1,5 +1,5 @@
 const redis = require('redis');
-const _ = require('lodash');
+const fp = require('lodash/fp');
 
 class MessageQueue {
 
@@ -35,19 +35,19 @@ class MessageQueue {
                 message = {};
             }
             log.sys('MessageQueue: ', _this.name, 'Message: ', channel, message);
-            if(_.isEmpty(message)){
+            if(fp.isEmpty(message)){
                 return;
             }
 
             let validCallback = [];
-            _.each(_this.callback, function (callback) {
+            fp.each(function (callback) {
                 if(callback){
                     validCallback.push(callback);
                     if(callback.Match(message)) {
                         callback.Do(message);
                     }
                 }
-            });
+            })(_this.callback);
             _this.callback = validCallback;
         });
         _this.queue = queueName;
@@ -75,7 +75,7 @@ class MessageQueue {
 
     publish(message){
         let _this = this;
-        if(_.isObject(message)){
+        if(fp.isObject(message)){
             message = JSON.stringify(message);
         }
         log.sys(message);

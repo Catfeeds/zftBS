@@ -2,8 +2,6 @@
  * 解析/生成 GUID
  */
 
-let config = require('config');
-let moment = require('moment');
 let _ = require('underscore');
 
 let lengthOfDeviceIDField = {
