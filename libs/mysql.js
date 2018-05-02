@@ -19,14 +19,14 @@ exports.Load = () => {
     return new Promise((resolve, reject)=>{
         const read = JSON.parse(config.RDS.read);
         const write = JSON.parse(config.RDS.write);
-		sequelizeInstance = new Sequelize(null, null, null, {
+        sequelizeInstance = new Sequelize(null, null, null, {
             dialect: 'mysql',
             replication: {
                 read: read,
                 write: write
             },
             logging: true,
-            timezone: "+08:00",
+            timezone: '+08:00',
             retry:{
                 max: 0
             },
@@ -37,14 +37,14 @@ exports.Load = () => {
                 acquire: 20000
             }
         });
-		sequelizeInstance.authenticate().then(
+        sequelizeInstance.authenticate().then(
             function (err) {
                 log.info('RDS EM Connection Successful...');
                 resolve();
 
-				exports.Sequelize = sequelizeInstance;
+                exports.Sequelize = sequelizeInstance;
 
-				SequelizeDefine();
+                SequelizeDefine();
             }
         ).catch(function (err) {
             log.error(err);
@@ -63,28 +63,28 @@ exports.Exec = function(sql, replacements)
     //判断QueryTypes
     var queryTypes;
     {
-        var blankIndex = sql.indexOf(" ");
+        var blankIndex = sql.indexOf(' ');
         var types = sql.substr(0, blankIndex);
         switch(types){
-            case "SELECT":
-            case "select":
-                queryTypes = Sequelize.QueryTypes.SELECT;
-                break;
-            case "UPDATE":
-            case "update":
-                queryTypes = Sequelize.QueryTypes.UPDATE;
-                break;
-            case "DELETE":
-            case "delete":
-                queryTypes = Sequelize.QueryTypes.DELETE;
-                break;
-            case "INSERT":
-            case "insert":
-                queryTypes = Sequelize.QueryTypes.INSERT;
-                break;
-            default:
-                return null;
-                break;
+        case 'SELECT':
+        case 'select':
+            queryTypes = Sequelize.QueryTypes.SELECT;
+            break;
+        case 'UPDATE':
+        case 'update':
+            queryTypes = Sequelize.QueryTypes.UPDATE;
+            break;
+        case 'DELETE':
+        case 'delete':
+            queryTypes = Sequelize.QueryTypes.DELETE;
+            break;
+        case 'INSERT':
+        case 'insert':
+            queryTypes = Sequelize.QueryTypes.INSERT;
+            break;
+        default:
+            return null;
+            break;
         }
     }
 
@@ -117,27 +117,27 @@ exports.ExecT = function(sql, t)
     //判断QueryTypes
     var queryTypes;
     {
-        var blankIndex = sql.indexOf(" ");
+        var blankIndex = sql.indexOf(' ');
         var types = sql.substr(0, blankIndex);
         switch(types){
-            case "SELECT":
-            case "select":
-                queryTypes = Sequelize.QueryTypes.SELECT;
-                break;
-            case "UPDATE":
-            case "update":
-                queryTypes = Sequelize.QueryTypes.UPDATE;
-                break;
-            case "DELETE":
-            case "delete":
-                queryTypes = Sequelize.QueryTypes.DELETE;
-                break;
-            case "INSERT":
-            case "insert":
-                queryTypes = Sequelize.QueryTypes.INSERT;
-                break;
-            default:
-                return null;
+        case 'SELECT':
+        case 'select':
+            queryTypes = Sequelize.QueryTypes.SELECT;
+            break;
+        case 'UPDATE':
+        case 'update':
+            queryTypes = Sequelize.QueryTypes.UPDATE;
+            break;
+        case 'DELETE':
+        case 'delete':
+            queryTypes = Sequelize.QueryTypes.DELETE;
+            break;
+        case 'INSERT':
+        case 'insert':
+            queryTypes = Sequelize.QueryTypes.INSERT;
+            break;
+        default:
+            return null;
         }
     }
 
@@ -471,8 +471,8 @@ function SequelizeDefine()
 
     exports.Settings = sequelizeInstance.define('settings', {
         projectId: {
-			type: Sequelize.BIGINT.UNSIGNED,
-			allowNull: true // null 为 全局配置
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: true // null 为 全局配置
         },
         group: {
             type: Sequelize.STRING(128),  //分组名
@@ -500,10 +500,10 @@ function SequelizeDefine()
             allowNull: false,
             defaultValue: 0
         },
-		projectId: {    //项目ID
-			type: Sequelize.BIGINT.UNSIGNED,
-			allowNull: false
-		},
+        projectId: {    //项目ID
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
         userId: {
             type: Sequelize.BIGINT.UNSIGNED,     //用户ID
             allowNull: false,
@@ -567,55 +567,55 @@ function SequelizeDefine()
         }
     },{
         timestamps: true,
-		paranoid: true,
+        paranoid: true,
         freezeTableName: true
     });
 
     Rooms.hasMany(Contracts, {as: 'contracts', foreignKey:'roomId'});
 
-	const Users = sequelizeInstance.define('users', {
-		accountName: {
-			type: Sequelize.STRING(32),     //账号
-			allowNull: false,
-			unique: true
-		},
+    const Users = sequelizeInstance.define('users', {
+        accountName: {
+            type: Sequelize.STRING(32),     //账号
+            allowNull: false,
+            unique: true
+        },
         name: {
-			type: Sequelize.STRING(24),     //姓名
-			allowNull: false
-		},
-		mobile: {
-			type: Sequelize.STRING(13),     //手机
-			allowNull: false
-		},
-		documentId: {
-			type: Sequelize.TEXT,   //证件号
-			allowNull: true
-		},
-		documentType: {
-			type: Sequelize.INTEGER,   //证件类型
-			allowNull: true,
-			defaultValue: 1,
-			validate: {
-				max: 8,                  // 1 '身份证', 2 '护照', 3 '港澳通行证', 4 '台胞证', 5 '居住证', 6 '临时居住证', 7 '营业执照', 8 '其他证件'
-				min: 1
-			}
-		},
-		gender: {
-			type: Sequelize.STRING(1),   //性别
-			allowNull: false,
-			defaultValue: 'M',
-			validate: {
-				isIn: [['M', 'F']]
-			}
-		},
-	},{
-		timestamps: false,
-		freezeTableName: true
-	});
-	Contracts.belongsTo(Users);
-	Contracts.belongsTo(Rooms, {as: 'room'});
-	exports.Contracts = Contracts;
-	exports.Users = Users;
+            type: Sequelize.STRING(24),     //姓名
+            allowNull: false
+        },
+        mobile: {
+            type: Sequelize.STRING(13),     //手机
+            allowNull: false
+        },
+        documentId: {
+            type: Sequelize.TEXT,   //证件号
+            allowNull: true
+        },
+        documentType: {
+            type: Sequelize.INTEGER,   //证件类型
+            allowNull: true,
+            defaultValue: 1,
+            validate: {
+                max: 8,                  // 1 '身份证', 2 '护照', 3 '港澳通行证', 4 '台胞证', 5 '居住证', 6 '临时居住证', 7 '营业执照', 8 '其他证件'
+                min: 1
+            }
+        },
+        gender: {
+            type: Sequelize.STRING(1),   //性别
+            allowNull: false,
+            defaultValue: 'M',
+            validate: {
+                isIn: [['M', 'F']]
+            }
+        },
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
+    Contracts.belongsTo(Users);
+    Contracts.belongsTo(Rooms, {as: 'room'});
+    exports.Contracts = Contracts;
+    exports.Users = Users;
 
     const CashAccount = sequelizeInstance.define('cashAccount', {
         id: {
@@ -646,17 +646,17 @@ function SequelizeDefine()
     });
     exports.CashAccount = CashAccount;
 
-	exports.GeoLocation = GeoLocation;
+    exports.GeoLocation = GeoLocation;
 
-	exports.Division = sequelizeInstance.define('division', {
+    exports.Division = sequelizeInstance.define('division', {
         name: {
-			type: Sequelize.STRING,     //区划名称
-			allowNull: false
-		}
-	},{
-		timestamps: false,
-		freezeTableName: true
-	});
+            type: Sequelize.STRING,     //区划名称
+            allowNull: false
+        }
+    },{
+        timestamps: false,
+        freezeTableName: true
+    });
 
     exports.Bills = sequelizeInstance.define('bills', {
         id: {
@@ -1134,8 +1134,8 @@ function SequelizeDefine()
         freezeTableName: true
     });
 
-	exports.BillFlows.belongsTo(exports.Bills);
-	exports.Bills.hasMany(exports.BillFlows , {as: 'billItems'});
+    exports.BillFlows.belongsTo(exports.Bills);
+    exports.Bills.hasMany(exports.BillFlows , {as: 'billItems'});
 
     exports.Divisions = sequelizeInstance.define('divisions', {
         id: {
@@ -1586,7 +1586,7 @@ exports.GenerateSQLInArray = function(array)
     var idsArray = [];
     _.each(array, function (id) {
         if(_.isString(id)) {
-            idsArray.push("'" + id + "'");
+            idsArray.push('\'' + id + '\'');
         }
         else{
             idsArray.push(id);
@@ -1603,10 +1603,10 @@ exports.GenerateSQL = function(sql, queryArray)
     var sqlSentence = sql;
     if(queryArray.length){
 
-        sqlSentence += " WHERE ";
+        sqlSentence += ' WHERE ';
         _.each(queryArray, function (query, index) {
             if(index){
-                sqlSentence += " AND ";
+                sqlSentence += ' AND ';
             }
             sqlSentence += query;
         });
@@ -1628,20 +1628,20 @@ exports.Plain = function (data)
 * */
 exports.EnergyConsumptionTable = function(time)
 {
-    return "ecdaily"+time.format('YYYYMM');
+    return 'ecdaily'+time.format('YYYYMM');
 };
 /*
 * 获取原始能耗
 * */
 exports.OriginEnergyConsumptionTable = function (time) {
-    return "origindaily"+time.format('YYYYMM');
+    return 'origindaily'+time.format('YYYYMM');
 };
 /*
  * 获取费用表
  * */
 exports.CostTable = function(time)
 {
-    return "costdaily"+time.format('YYYYMM');
+    return 'costdaily'+time.format('YYYYMM');
 };
 
 class Paging{

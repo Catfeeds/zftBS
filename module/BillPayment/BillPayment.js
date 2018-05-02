@@ -84,13 +84,13 @@ function generateProject(projectId, time, agentFundChannel) {
 
 function generate(projects, time, agentFundChannel) {
     if(!projects.length){
-        return log.warn('billPayment Done...')
+        return log.warn('billPayment Done...');
     }
 
     const next = ()=>{
         return setImmediate(()=>{
             generate(_.tail(projects));
-        })
+        });
     };
 
     const project = _.head(projects);
@@ -128,7 +128,7 @@ exports.Run = ()=>{
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '1700'){
                     //
-                    if(!lastPaymentTime || lastPaymentTime.format('YYYYMMDD') !== m.format("YYYYMMDD")){
+                    if(!lastPaymentTime || lastPaymentTime.format('YYYYMMDD') !== m.format('YYYYMMDD')){
                         lastPaymentTime = moment(m);
 
                         Promise.all([

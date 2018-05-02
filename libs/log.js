@@ -18,12 +18,12 @@ exports = module.exports = function(appName, logPath)
             root: logPath,
             methods: methods,
             allLogsFileName: appName,
-            format: "[{{timestamp}}] {{ipAddress}}:{{pid}} {{appName}} {{title}} {{path}}{{relativePath}}:{{line}}:{{method}} {{message}}",
-            dateformat: "yyyy-mm-dd HH:MM:ss",
+            format: '[{{timestamp}}] {{ipAddress}}:{{pid}} {{appName}} {{title}} {{path}}{{relativePath}}:{{line}}:{{method}} {{message}}',
+            dateformat: 'yyyy-mm-dd HH:MM:ss',
             maxLogFiles:365,
             preprocess: function (data) {
                 let process = require('process');
-                let ip = require("ip");
+                let ip = require('ip');
 
                 data.relativePath = path.relative(appRootPath.path, data.path);
                 data.path = '';

@@ -36,7 +36,7 @@ function bulkSend(messageTypeId, messages) {
             timestamp: now,
             messageTypeId: messageTypeId,
             param: message
-        }
+        };
     })(messages);
     MySQL.EventQueue.bulkCreate(bulkMessages).then(
         ()=>{},

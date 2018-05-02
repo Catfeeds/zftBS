@@ -125,7 +125,7 @@ var ErrorMessageList = {
     'BANKNOTSUPPORT': '不支持该银行',
     'STRATEGYUNSUPPORT': '策略不支持',
     'PARAMETEROVERFLOW': '参数溢出',
-	'IMPORTEMPTY': '导入内容为空',
+    'IMPORTEMPTY': '导入内容为空',
     'ORDERTYPENOTALLOWED': '业务类型不允许',
     'ORDERNOTEXISTS': '账单不存在',
     'ORDERTYPEERROR': '业务类型错误',
@@ -179,7 +179,7 @@ exports.Answer = function (ret, res)
                     return res.status(key).send(ret);
                 }
                 return false;
-            })
+            });
         }
     }
 

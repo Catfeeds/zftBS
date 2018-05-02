@@ -35,7 +35,7 @@ async function Pay(userId, amount, t, payAble) {
         const result = await MySQL.CashAccount.update(
             {
                 balance: MySQL.Literal(`balance+${amount}`),
-                locker: cashAccount.locker > MAX_LOCK ? 1: MySQL.Literal(`locker+1`)
+                locker: cashAccount.locker > MAX_LOCK ? 1: MySQL.Literal('locker+1')
             },
             options
         );
@@ -115,32 +115,34 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
                 as: 'rooms',
                 requried: false,
                 include:[
-                  {
-                    model: MySQL.HouseDevices,
-                    as: 'devices',
-                    required: true
-                  }
+                    {
+                        model: MySQL.HouseDevices,
+                        as: 'devices',
+                        required: true
+                    }
                 ]
             }
         ]
-    })
+    });
 };
 
 exports.dailyDeviceData = (houses, time)=>{
-    const deviceId2HouseId =fp.fromPairs(fp.flatten(fp.map(house=>{
-        const houseDev = fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
-        const roomDev = fp.flatten(fp.map(room=>{
-                    return fp.map(dev=>{
-                        return [dev.deviceId, house.id];
-                    })(room.devices);
-                })(house.rooms));
+    const deviceId2HouseId = fp.fromPairs(fp.flatten(fp.map(house => {
+        const houseDev = fp.map(dev => {
+            return [dev.deviceId, house.id];
+        })(house.devices);
+        const roomDev = fp.flatten(fp.map(room => {
+            return fp.map(dev => {
+                return [dev.deviceId, house.id];
+            })(room.devices);
+        })(house.rooms));
         return fp.flatten([houseDev, roomDev]);
     })(houses)));
-    const housePriceMapping = fp.fromPairs(fp.map(house=>{
+    const housePriceMapping = fp.fromPairs(fp.map(house => {
         return [
-            house.id, _.fromPairs(fp.map(price=>{
-                return [price.type, price.price]
-            })(house.prices))
+            house.id, _.fromPairs(fp.map(price => {
+                return [price.type, price.price];
+            })(house.prices)),
         ];
     })(houses));
     const deviceIds = fp.flattenDeep(fp.map(house=>{

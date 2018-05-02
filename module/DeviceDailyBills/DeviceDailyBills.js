@@ -51,7 +51,7 @@ function generateProject(projectId, setting, time) {
 
                 const houseIds = _.compact( fp.map(contract=>{return contract.room && contract.room.houseId;})(contracts) );
                 const roomId2ContractId = _.fromPairs(fp.map(contract=>{
-                    return [contract.roomId, contract.id]
+                    return [contract.roomId, contract.id];
                 })(contracts));
                 const payDevice = (devicePrePaid, roomId)=>{
                     const userId = roomId2UserId[roomId];
@@ -158,22 +158,22 @@ function generateProject(projectId, setting, time) {
                         else{
                             //如果合同中有单价，则优先使用合同中的单价
                             switch(expense.configId){
-                                case 1041:
+                            case 1041:
                                 {
                                     //electric
                                     if(!roomDevicePrice[roomId]){ roomDevicePrice[roomId] = {};}
 
                                     roomDevicePrice[roomId].ELECTRIC = expense.rent;
                                 }
-                                    break;
-                                case 1043:
+                                break;
+                            case 1043:
                                 {
                                     //water
                                     if(!roomDevicePrice[roomId]){ roomDevicePrice[roomId] = {};}
 
                                     roomDevicePrice[roomId].WATER = expense.rent;
                                 }
-                                    break;
+                                break;
                             }
                         }
                     });
@@ -304,13 +304,13 @@ function generateProject(projectId, setting, time) {
 
 function generate(projects, setting, time) {
     if(!projects.length){
-        return log.warn('HousesBills Done...')
+        return log.warn('HousesBills Done...');
     }
 
     const next = ()=>{
         return setImmediate(()=>{
             generate(_.tail(projects), setting, time);
-        })
+        });
     };
 
     const project = _.head(projects);
@@ -332,7 +332,7 @@ function batchBill() {
     ]).then(
         result=>{
             const setting = _.fromPairs(fp.map(setting=>{
-                return [setting.id, setting]
+                return [setting.id, setting];
             })(result[0]));
 
             // generate( result[1], setting, m );
@@ -356,7 +356,7 @@ function batchBill() {
                     const next = ()=>{
                         return setImmediate(()=>{
                             projectsBill(_.tail(projects));
-                        })
+                        });
                     };
 
                     const project = _.head(projects);
@@ -389,7 +389,7 @@ exports.Run = ()=>{
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
                 if(timePoint === '0800'){
                     //
-                    if(!lastPaymentTime || lastPaymentTime.format('YYYYMMDD') !== m.format("YYYYMMDD")){
+                    if(!lastPaymentTime || lastPaymentTime.format('YYYYMMDD') !== m.format('YYYYMMDD')){
                         lastPaymentTime = moment(m);
                         m.subtract(1, 'day').endOf('day');
 
@@ -399,7 +399,7 @@ exports.Run = ()=>{
                         ]).then(
                             result=>{
                                 const setting = _.fromPairs(fp.map(setting=>{
-                                    return [setting.id, setting]
+                                    return [setting.id, setting];
                                 })(result[0]));
 
                                 generate( result[1], setting, m );

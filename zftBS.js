@@ -1,7 +1,7 @@
 require('include-node');
 const config = require('config');
 const _ = require('lodash');
-Include( '/libs/log')("zftBS");
+Include( '/libs/log')('zftBS');
 const {job: cronJob} = require('./libs/cronJob');
 
 {
@@ -49,7 +49,7 @@ MySQL.Load().then(
                     catch(e){
                         log.error(moduleName, 'load error', e);
                     }
-                })
+                });
             }
         }
     }
