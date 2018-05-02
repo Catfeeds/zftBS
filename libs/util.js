@@ -127,10 +127,10 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
 };
 
 exports.dailyDeviceData = (houses, time)=>{
-    const deviceId2HouseId = fp.fromPairs(_.flatten(fp.map(house=>{
+    const deviceId2HouseId =fp.fromPairs(fp.flatten(fp.map(house=>{
         const houseDev = fp.map(dev=>{ return [dev.deviceId, house.id]; })(house.devices);
         const roomDev = fp.flatten(fp.map(room=>{
-                    fp.map(dev=>{
+                    return fp.map(dev=>{
                         return [dev.deviceId, house.id];
                     })(room.devices);
                 })(house.rooms));
