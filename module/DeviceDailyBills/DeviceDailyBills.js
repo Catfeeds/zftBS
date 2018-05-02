@@ -1,14 +1,13 @@
 const fp = require('lodash/fp');
-const _ = require('lodash');
 const bigdecimal = require('bigdecimal');
 const moment = require('moment');
 
 function generateProject(projectId, setting, time) {
     //
-    return new Promise((resolve, reject)=>{
+    return new Promise(resolve=>{
 
         const dailyFrom = moment(time).startOf('days').unix();
-        const dailyTo = time.unix();
+        // const dailyTo = time.unix();
 
         const paymentDay = moment(time).unix();
 
@@ -49,15 +48,15 @@ function generateProject(projectId, setting, time) {
                     return resolve();
                 }
 
-                const houseIds = _.compact( fp.map(contract=>{return contract.room && contract.room.houseId;})(contracts) );
-                const roomId2ContractId = _.fromPairs(fp.map(contract=>{
+                const houseIds = fp.compact( fp.map(contract=>{return contract.room && contract.room.houseId;})(contracts) );
+                const roomId2ContractId = fp.fromPairs(fp.map(contract=>{
                     return [contract.roomId, contract.id];
                 })(contracts));
                 const payDevice = (devicePrePaid, roomId)=>{
                     const userId = roomId2UserId[roomId];
 
                     const flowId = Util.newId();
-                    const prePaidObj = _.assign(devicePrePaid, {id: Util.newId(), flowId: flowId});
+                    const prePaidObj = fp.assign(devicePrePaid, {id: Util.newId(), flowId: flowId});
 
                     const prePaidFlow = {
                         id: flowId,
@@ -84,7 +83,7 @@ function generateProject(projectId, setting, time) {
                 };
                 const payDaily = (daily)=>{
                     const flowId = Util.newId();
-                    const createDaily = _.assign(daily, {id: Util.newId(), flowId: flowId});
+                    const createDaily = fp.assign(daily, {id: Util.newId(), flowId: flowId});
                     const prePaidFlow = {
                         id: flowId,
                         projectId: projectId,
@@ -114,7 +113,7 @@ function generateProject(projectId, setting, time) {
                 let roomId2UserId = {};
                 let roomDevicePrice = {};
                 let dailyPrePaid = [];
-                _.each(contracts, contract=>{
+                fp.each(contract=>{
                     if(!contract.room){
                         return;
                     }
@@ -130,13 +129,13 @@ function generateProject(projectId, setting, time) {
                     houseId2Rooms[houseId].push(roomId);
                     roomId2UserId[contract.roomId] = contract.userId;
 
-                    _.each(contract.room.devices, device=>{
+                    fp.each(device=>{
                         deviceId2RoomId[device.deviceId] = contract.roomId;
                         deviceIds.push(device.deviceId);
-                    });
+                    })(contract.room.devices);
 
                     //解析expenses中的预付费信息
-                    _.each(contract.expenses, expense=>{
+                    fp.each(expense=>{
                         if(!expense.configId || expense.pattern !== 'prepaid'){
                             return;
                         }
@@ -176,8 +175,8 @@ function generateProject(projectId, setting, time) {
                                 break;
                             }
                         }
-                    });
-                });
+                    })(contract.expenses);
+                })(contracts);
 
                 Promise.all([
                     Util.getHouses(projectId, time, 'CLIENT', houseIds),
@@ -191,13 +190,13 @@ function generateProject(projectId, setting, time) {
                         const houses = result[0];
 
                         let houseApportionment = {};
-                        _.each(result[1], apportionment=>{
+                        fp.each(apportionment=>{
                             if(!houseApportionment[apportionment.houseId]){
                                 houseApportionment[apportionment.houseId] = {};
                             }
 
                             houseApportionment[apportionment.houseId][apportionment.roomId] = apportionment.value;
-                        });
+                        })(result[1]);
 
                         const getAmountAndPrice = (cost)=>{
                             const roomId = deviceId2RoomId[cost.deviceId];
@@ -224,22 +223,25 @@ function generateProject(projectId, setting, time) {
                                 return Util.autoApportionment(houseId2Rooms[houseId]);
                             }
                             else{
+
                                 return apportionment;
                             }
                         };
 
                         Util.dailyDeviceData(houses, time).then(
                             houseCostMapping=>{
-                                _.each(houseCostMapping, costs=>{
-                                    _.each(costs, cost=>{
+                                fp.each(costs=>{
+                                    fp.each(cost=>{
                                         //
                                         const amountAndPrice = getAmountAndPrice(cost);
                                         const roomId = deviceId2RoomId[cost.deviceId];
 
                                         if(cost.public){
                                             //公区表
-                                            const apportionment = getApportionment(cost.houseId);
-                                            _.map(apportionment, (percent, roomId)=>{
+                                            const apportionments = fp.toPairs( getApportionment(cost.houseId) );
+                                            fp.each(apportionment=>{
+                                                const roomId = apportionment[0];
+                                                const percent = apportionment[1];
                                                 const amountOfShare = (
                                                     new bigdecimal.BigDecimal(amountAndPrice.amount.toString())
                                                 ).multiply(new bigdecimal.BigDecimal(percent.toString())
@@ -258,7 +260,7 @@ function generateProject(projectId, setting, time) {
                                                     createdAt: moment().unix()
                                                 };
                                                 payDevice(devicePrePaid, roomId);
-                                            });
+                                            })(apportionments);
                                         }
                                         else{
                                             //私有表
@@ -277,14 +279,14 @@ function generateProject(projectId, setting, time) {
                                             payDevice(devicePrePaid, roomId);
                                         }
 
-                                    });
-                                });
+                                    })(costs);
+                                })(houseCostMapping);
 
                                 //do daily prepaid
                                 log.info(dailyPrePaid);
-                                _.each(dailyPrePaid, daily=>{
+                                fp.each(daily=>{
                                     payDaily(daily);
-                                });
+                                })(dailyPrePaid);
 
                                 resolve();
                             },
@@ -309,11 +311,11 @@ function generate(projects, setting, time) {
 
     const next = ()=>{
         return setImmediate(()=>{
-            generate(_.tail(projects), setting, time);
+            generate(fp.tail(projects), setting, time);
         });
     };
 
-    const project = _.head(projects);
+    const project = fp.head(projects);
     generateProject(project.id, setting, time).then(
         ()=>{
             next();
@@ -321,61 +323,61 @@ function generate(projects, setting, time) {
     );
 }
 
-function batchBill() {
-    const timeFrom = moment('2017 0701 0100', 'YYYY MMDD HHmm');
-    // const timeTo = moment('2018 0220 0100', 'YYYY MMDD HHmm');
-    const timeTo = moment('2017 1231 0100', 'YYYY MMDD HHmm');
-
-    Promise.all([
-        MySQL.Settings.findAll({}),
-        MySQL.Projects.findAll({})
-    ]).then(
-        result=>{
-            const setting = _.fromPairs(fp.map(setting=>{
-                return [setting.id, setting];
-            })(result[0]));
-
-            // generate( result[1], setting, m );
-            
-            const doBill = (timeIndex)=>{
-                if(timeIndex.unix() > timeTo.unix()){
-                    return log.warn('done...');
-                }
-
-                const nextTime = ()=>{
-                    return setImmediate(()=>{
-                        doBill(timeIndex.add(1, 'days'));
-                    });
-                };
-                const projectsBill = (projects)=>{
-                    if(!projects.length){
-                        log.info('done ', timeIndex.format('YYYYMMDD'));
-                        return nextTime();
-                    }
-
-                    const next = ()=>{
-                        return setImmediate(()=>{
-                            projectsBill(_.tail(projects));
-                        });
-                    };
-
-                    const project = _.head(projects);
-                    generateProject(project.id, setting, timeIndex).then(
-                        ()=>{
-                            log.info(project.name, 'done');
-                            next();
-                        }
-                    );
-                };
-
-                log.info('doing ', timeIndex.format('YYYYMMDD'));
-                projectsBill(result[1]);
-            };
-
-            doBill(timeFrom);
-        }
-    );
-}
+// function batchBill() {
+//     const timeFrom = moment('2017 0701 0100', 'YYYY MMDD HHmm');
+//     // const timeTo = moment('2018 0220 0100', 'YYYY MMDD HHmm');
+//     const timeTo = moment('2017 1231 0100', 'YYYY MMDD HHmm');
+//
+//     Promise.all([
+//         MySQL.Settings.findAll({}),
+//         MySQL.Projects.findAll({})
+//     ]).then(
+//         result=>{
+//             const setting = fp.fromPairs(fp.map(setting=>{
+//                 return [setting.id, setting];
+//             })(result[0]));
+//
+//             // generate( result[1], setting, m );
+//
+//             const doBill = (timeIndex)=>{
+//                 if(timeIndex.unix() > timeTo.unix()){
+//                     return log.warn('done...');
+//                 }
+//
+//                 const nextTime = ()=>{
+//                     return setImmediate(()=>{
+//                         doBill(timeIndex.add(1, 'days'));
+//                     });
+//                 };
+//                 const projectsBill = (projects)=>{
+//                     if(!projects.length){
+//                         log.info('done ', timeIndex.format('YYYYMMDD'));
+//                         return nextTime();
+//                     }
+//
+//                     const next = ()=>{
+//                         return setImmediate(()=>{
+//                             projectsBill(fp.tail(projects));
+//                         });
+//                     };
+//
+//                     const project = fp.head(projects);
+//                     generateProject(project.id, setting, timeIndex).then(
+//                         ()=>{
+//                             log.info(project.name, 'done');
+//                             next();
+//                         }
+//                     );
+//                 };
+//
+//                 log.info('doing ', timeIndex.format('YYYYMMDD'));
+//                 projectsBill(result[1]);
+//             };
+//
+//             doBill(timeFrom);
+//         }
+//     );
+// }
 
 exports.Run = ()=>{
     let lastPaymentTime;
@@ -398,7 +400,7 @@ exports.Run = ()=>{
                             MySQL.Projects.findAll({})
                         ]).then(
                             result=>{
-                                const setting = _.fromPairs(fp.map(setting=>{
+                                const setting = fp.fromPairs(fp.map(setting=>{
                                     return [setting.id, setting];
                                 })(result[0]));
 

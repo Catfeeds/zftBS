@@ -1,10 +1,9 @@
 const fp = require('lodash/fp');
-const _ = require('lodash');
 const moment = require('moment');
 
 function generateProject(projectId, time) {
     //
-    return new Promise((resolve, reject)=>{
+    return new Promise(()=>{
 
         const endIn2DaysFrom = moment(time).startOf('days').unix();
         const endIn2DaysTo = moment(time).add(2,'days').startOf('days').unix();
@@ -46,8 +45,8 @@ function generateProject(projectId, time) {
 
                 const getUnPayed = (bills)=>{
                     return fp.map(item=>{
-                        const amount = _.sum(
-                            _.compact(fp.map(bill=>{
+                        const amount = fp.sum(
+                            fp.compact(fp.map(bill=>{
                                 if(!bill.payments.length){
                                     return bill.dueAmount;
                                 }
@@ -86,11 +85,11 @@ function generate(projects, time) {
 
     const next = ()=>{
         return setImmediate(()=>{
-            generate(_.tail(projects));
+            generate(fp.tail(projects));
         });
     };
 
-    const project = _.head(projects);
+    const project = fp.head(projects);
     generateProject(project.id, time).then(
         ()=>{
             next();

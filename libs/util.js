@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const moment = require('moment');
 const fp = require('lodash/fp');
 const bigdecimal = require('bigdecimal');
@@ -22,7 +21,7 @@ async function Pay(userId, amount, t, payAble) {
     }
 
     try {
-        const options = _.assign(
+        const options = fp.assign(
             {
                 where: {
                     userId: userId,
@@ -75,7 +74,7 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
     const timeStamp = time.unix();
     const preDay = moment(time).subtract(1, 'days').startOf('days').unix();
 
-    const where = _.assign(
+    const where = fp.assign(
         {
             projectId: projectId,
             status:{$ne: 'DELETED'}
@@ -126,6 +125,13 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
     });
 };
 
+exports.filterValidDeviceData = (data, endDate) => {
+    return fp.compact(fp.map(d => {
+        const isValid = (endDate === 0) || (d.time < endDate);
+        return isValid ? d : null;
+    })(data));
+};
+
 exports.dailyDeviceData = (houses, time)=>{
     const deviceId2HouseId = fp.fromPairs(fp.flatten(fp.map(house => {
         const houseDev = fp.map(dev => {
@@ -140,7 +146,7 @@ exports.dailyDeviceData = (houses, time)=>{
     })(houses)));
     const housePriceMapping = fp.fromPairs(fp.map(house => {
         return [
-            house.id, _.fromPairs(fp.map(price => {
+            house.id, fp.fromPairs(fp.map(price => {
                 return [price.type, price.price];
             })(house.prices)),
         ];
@@ -151,9 +157,7 @@ exports.dailyDeviceData = (houses, time)=>{
                 return dev.deviceId;
             })(house.devices)
             ,fp.map(room=>{
-                fp.map(dev=>{
-                    return dev.deviceId;
-                })(room.devices);
+                return fp.map(deviceId)(room.devices);
             })(house.rooms)
         ];
     })(houses)); 
@@ -161,7 +165,7 @@ exports.dailyDeviceData = (houses, time)=>{
     const from = moment(time).subtract(2, 'days').endOf('days').unix();
     const timeStamp = moment(time).subtract(1, 'days').endOf('days').unix();
 
-    return new Promise((resolve, reject)=>{
+    return new Promise(resolve=>{
         MySQL.DevicesData.findAll({
             where:{
                 deviceId:{$in: deviceIds},
@@ -172,7 +176,7 @@ exports.dailyDeviceData = (houses, time)=>{
         }).then(
             devicesData=>{
                 let dataMapping = {};
-                _.each(devicesData, data=>{
+                fp.each(data=>{
                     const deviceId = data.deviceId;
                     const channelId = data.channelId;
 
@@ -189,12 +193,12 @@ exports.dailyDeviceData = (houses, time)=>{
                         reading: data.reading,
                         time: data.time
                     });
-                });
+                })(devicesData);
 
                 //calculate device usage
                 let houseCostMapping = {};
-                _.each(houses, house=> {
-                    _.each(house.devices, device => {
+                fp.each(house=> {
+                    fp.each(device => {
                         const deviceId = device.deviceId;
                         if (!dataMapping[deviceId]) {
                             return;
@@ -204,12 +208,6 @@ exports.dailyDeviceData = (houses, time)=>{
                             return;
                         }
 
-                        const dataFilter = (data, endDate) => {
-                            return _.compact(fp.map(d => {
-                                const isValid = endDate === 0 || d.time < endDate;
-                                return isValid ? d : null;
-                            })(data));
-                        };
                         const calc = (ary) => {
                             let usage = 0;
                             for (let i = 1; i < ary.length; i++) {
@@ -218,11 +216,11 @@ exports.dailyDeviceData = (houses, time)=>{
                             return usage;
                         };
                         const getScale = () => {
-                            return _.last(data).reading;
+                            return fp.last(data).reading;
                         };
 
-                        const data = dataFilter(dataMapping[deviceId]['11'], device.endDate);
-                        if (_.isEmpty(data) || data.length === 1) {
+                        const data = exports.filterValidDeviceData(dataMapping[deviceId]['11'], device.endDate);
+                        if (fp.isEmpty(data) || data.length === 1) {
                             log.error(deviceId, ' data is empty or less then 2', data);
                             return;
                         }
@@ -232,7 +230,7 @@ exports.dailyDeviceData = (houses, time)=>{
 
                         //only electric now
                         const base = new bigdecimal.BigDecimal(usage.toString());
-                        const price = new bigdecimal.BigDecimal(_.get(priceObj, 'ELECTRIC', 0).toString());
+                        const price = new bigdecimal.BigDecimal(fp.getOr(0)('ELECTRIC')(priceObj).toString());
                         const cost = base.multiply(price).divide(new bigdecimal.BigDecimal('10000'), 0, bigdecimal.RoundingMode.DOWN());
 
                         if (!houseCostMapping[houseId]) {
@@ -245,12 +243,12 @@ exports.dailyDeviceData = (houses, time)=>{
                             public: device.public,
                             deviceId: deviceId,
                             usage: usage,
-                            price: _.get(priceObj, 'ELECTRIC', 0)
+                            price: fp.getOr(0)('ELECTRIC')(priceObj)
                         };
                         // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
                         houseCostMapping[houseId].push(houseCost);
-                    });
-                });
+                    })(house.devices);
+                })(houses);
 
                 // make housesBills
                 resolve(houseCostMapping);
@@ -271,8 +269,8 @@ exports.autoApportionment = (roomIds)=>{
             suffix = 100 - base * count;
         }
 
-        const minRoomId = _.min(roomIds);
-        const share = _.fromPairs(fp.map(roomId=>{
+        const minRoomId = fp.min(roomIds);
+        const share = fp.fromPairs(fp.map(roomId=>{
             if(roomId === minRoomId){
                 return [roomId, base + suffix];
             }

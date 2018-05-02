@@ -1,10 +1,9 @@
 const fp = require('lodash/fp');
-const _ = require('lodash');
 const moment = require('moment');
 
 function generateProject(projectId, time, agentFundChannel) {
     //
-    return new Promise((resolve, reject)=>{
+    return new Promise(resolve=>{
 
         const payTimeFrom = moment(time).startOf('days').unix();
         const payTimeTo = moment(time).endOf('days').unix();
@@ -22,7 +21,7 @@ function generateProject(projectId, time, agentFundChannel) {
             ]
         }).then(
             bills=>{
-                _.each(bills, bill=>{
+                fp.each(bill=>{
                     if(!bill.contract){
                         return log.error('bill can not match contract', bill.toJSON());
                     }
@@ -74,7 +73,7 @@ function generateProject(projectId, time, agentFundChannel) {
                         }
                     })();
 
-                });
+                })(bills);
 
                 resolve();
             }
@@ -89,11 +88,11 @@ function generate(projects, time, agentFundChannel) {
 
     const next = ()=>{
         return setImmediate(()=>{
-            generate(_.tail(projects));
+            generate(fp.tail(projects));
         });
     };
 
-    const project = _.head(projects);
+    const project = fp.head(projects);
 
     MySQL.Settings.findOne({
         where:{
