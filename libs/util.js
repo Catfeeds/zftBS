@@ -157,7 +157,7 @@ exports.dailyDeviceData = (houses, time)=>{
                 return dev.deviceId;
             })(house.devices)
             ,fp.map(room=>{
-                return fp.map(deviceId)(room.devices);
+                return fp.map(device=>device.deviceId)(room.devices);
             })(house.rooms)
         ];
     })(houses)); 
@@ -197,8 +197,9 @@ exports.dailyDeviceData = (houses, time)=>{
 
                 //calculate device usage
                 let houseCostMapping = {};
-                fp.each(house=> {
-                    fp.each(device => {
+
+                const calcDeviceUsageCost = (devices, dataMapping, housePriceMapping) =>{
+                    return fp.compact(fp.map(device => {
                         const deviceId = device.deviceId;
                         if (!dataMapping[deviceId]) {
                             return;
@@ -236,8 +237,7 @@ exports.dailyDeviceData = (houses, time)=>{
                         if (!houseCostMapping[houseId]) {
                             houseCostMapping[houseId] = [];
                         }
-                        const houseCost = {
-                            houseId: house.id,
+                        return {
                             amount: cost.intValue(),
                             scale: getScale(),
                             public: device.public,
@@ -245,9 +245,34 @@ exports.dailyDeviceData = (houses, time)=>{
                             usage: usage,
                             price: fp.getOr(0)('ELECTRIC')(priceObj)
                         };
-                        // log.info(houseCost, houseCost.price*houseCost.usage === houseCost.amount);
-                        houseCostMapping[houseId].push(houseCost);
-                    })(house.devices);
+                    })(devices));
+                };
+                const saveToHouseCost = (deviceUsageCost, house)=>{
+                    if(!deviceUsageCost.length){
+                        return;
+                    }
+                    const houseId = house.id;
+                    if (!houseCostMapping[houseId]) {
+                        houseCostMapping[houseId] = [];
+                    }
+
+                    houseCostMapping[houseId] = fp.union(houseCostMapping[houseId])(
+                        fp.map(dev=>{
+                            return fp.assign(dev, {houseId})
+                        })(deviceUsageCost)
+                    );
+                };
+
+                fp.each(house=> {
+
+                    const deviceUsageCost = calcDeviceUsageCost(house.devices, dataMapping, housePriceMapping);
+
+                    saveToHouseCost(deviceUsageCost, house);
+
+                    fp.map(room=>{
+                        const roomCost = calcDeviceUsageCost(room.devices, dataMapping, housePriceMapping);
+                        saveToHouseCost( roomCost, house );
+                    })(house.rooms);
                 })(houses);
 
                 // make housesBills
