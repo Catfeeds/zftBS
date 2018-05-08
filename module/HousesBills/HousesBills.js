@@ -76,13 +76,12 @@ exports.Run = () => {
     const rule = new schedule.RecurrenceRule();
     rule.hour = 1;
     rule.minute = 0;
-    // schedule.scheduleJob(rule, async () => {
-    //     console.log(
-    //         `Daily backend process for housebills, start from ${moment().
-    //             format('YYYY-MM-DD hh:mm:ss')}`);
-    //     return bill(moment().subtract(1, 'day').endOf('day'));
-    // });
-    bill(moment('20171104', 'YYYYMMDD').subtract(1, 'day').endOf('day'));
+    schedule.scheduleJob(rule, async () => {
+        console.log(
+            `Daily backend process for housebills, start from ${moment().
+                format('YYYY-MM-DD hh:mm:ss')}`);
+        return bill(moment().subtract(1, 'day').endOf('day'));
+    });
 };
 
 exports.ModuleName = 'HousesBills';
