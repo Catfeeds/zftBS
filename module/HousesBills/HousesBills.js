@@ -2,16 +2,16 @@ const fp = require('lodash/fp');
 const moment = require('moment');
 const schedule = require('node-schedule');
 
-const generateProject = (time, projectId) => Util.getHouses(projectId, time,
+const generateProject = time => project => Util.getHouses(project.id, time,
     'HOST').
     then(
         houses => {
-            Util.dailyDeviceData(houses, time).then(makeHousesBills(projectId, time))
+            Util.dailyDeviceData(houses, time).then(makeHousesBills(project.id, time));
         },
-    err=>{
+        err=>{
             log.error(err);
-    }
-);
+        }
+    );
 
 const makeHousesBills = (projectId, time) => async (housesBills = []) => {
     const paymentDay = time.unix();
@@ -61,9 +61,7 @@ const makeHousesBills = (projectId, time) => async (housesBills = []) => {
 
 const generate = time =>
     projects =>
-        Promise.all(fp.map(project=>{
-            generateProject(time, project.id)
-        })(projects)).
+        Promise.all(fp.map(generateProject(time))(projects)).
             then(() => log.warn('HousesBills Done...'));
 
 function bill(time) {

@@ -27,7 +27,7 @@ describe('HouseBills', function() {
         const bulkBillFlowsCreateSpy = spy();
         global.MySQL = {
             Projects: {
-                findAll: async () => [1],
+                findAll: async () => [{id: 1}],
             },
             Houses: {
                 findAll: async () => [

@@ -258,7 +258,7 @@ exports.dailyDeviceData = (houses, time)=>{
 
                     houseCostMapping[houseId] = fp.union(houseCostMapping[houseId])(
                         fp.map(dev=>{
-                            return fp.assign(dev, {houseId})
+                            return fp.assign(dev, {houseId});
                         })(deviceUsageCost)
                     );
                 };
@@ -269,7 +269,7 @@ exports.dailyDeviceData = (houses, time)=>{
 
                     saveToHouseCost(deviceUsageCost, house);
 
-                    fp.map(room=>{
+                    fp.each(room=>{
                         const roomCost = calcDeviceUsageCost(room.devices, dataMapping, housePriceMapping);
                         saveToHouseCost( roomCost, house );
                     })(house.rooms);
