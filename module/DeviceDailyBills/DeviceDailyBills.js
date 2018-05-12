@@ -68,14 +68,14 @@ function generateProject(projectId, setting, time) {
 
                     log.info('devicePrePaid: ', userId, prePaidObj, prePaidFlow);
 
-                    Util.PayWithOwed(userId, devicePrePaid.amount).then(
+                    Util.PayWithOwed(userId, prePaidObj.amount).then(
                         ret=>{
                             if(ret.code !== ErrorCode.OK ){
-                                log.error('PayWithOwed failed', userId, devicePrePaid, roomId, ret);
+                                log.error('PayWithOwed failed', userId, prePaidObj, roomId, ret);
                                 return;
                             }
 
-                            MySQL.DevicePrePaid.create(devicePrePaid);
+                            MySQL.DevicePrePaid.create(prePaidObj);
                             MySQL.PrePaidFlows.create(prePaidFlow);
                             Message.BalanceChange(projectId, userId, ret.amount, ret.balance);
                         }
@@ -385,7 +385,7 @@ exports.Run = ()=>{
     {
         setTimeout(function(){
             setTimeout(function(){
-                // let m = moment('2018 0428 0800', 'YYYY MMDD HHmm');
+                // let m = moment('2017 1116 0800', 'YYYY MMDD HHmm');
                 let m = moment();
                 let timePoint = m.format('HHmm');
                 // log.info('check payment time: ', m.format('YYYY-MM-DD HH:mm:ss'));
