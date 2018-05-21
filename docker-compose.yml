@@ -18,14 +18,36 @@ services:
         restart: always
         ports:
           - 6379:6379
+    zftapi:
+        image: zftapi_api:latest
+        entrypoint: /wait-for-it.sh db:3306 --
+        command: npm run dev
+        ports:
+          - 8000:8000
+        volumes:
+          - "/Users/louis.suo/repo/cloudenergy/zftapi:/src"
+          - "/Users/louis.suo/repo/cloudenergy/zftapi/node_modules:/src/node_modules"
+        environment:
+          - TZ=Asia/Shanghai
+          - ZFT_AMAP_KEY
+          - ZFT_EM_READ=[{"host":"db","port":3306,"username":"root","password":"example","database":"zft"}]
+          - ZFT_EM_WRITE={"host":"db","port":3306,"username":"root","password":"example","database":"zft"}
+          - REDIS_HOST=redis
+          - REDIS_PORT=6379
+          - REDIS_PASSWD
+          - ENV
+          - ALI_KEY
+          - ALI_SECRET
+          - ALLOW_ORIGIN
+        depends_on:
+          - db
+          - redis
     api:
         build:
           context: .
           dockerfile: Dockerfile-dev
         entrypoint: /wait-for-it.sh db:3306 --
         command: npm run dev
-        ports:
-          - 8000:8000
         volumes:
           - ".:/src"
           - "./node_modules:/src/node_modules"
@@ -41,3 +63,4 @@ services:
         depends_on:
           - db
           - redis
+          - zftapi

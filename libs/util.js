@@ -62,10 +62,12 @@ exports.PayWithOwed = async(userId, amount, t, payAble)=>{
     let ret;
     do {
         ret = await Pay(userId, amount, t, payAble);
+        console.log(ret);
         if(payAble && ret.code === ErrorCode.CASHNOTENOUGH){
             break;
         }
-    }while( count && ret.code !== ErrorCode.OK );
+        count -= 1;
+    }while( count > 0 && ret.code !== ErrorCode.OK );
 
     return ret;
 };
@@ -112,7 +114,7 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
             {
                 model: MySQL.Rooms,
                 as: 'rooms',
-                requried: false,
+                required: false,
                 include:[
                     {
                         model: MySQL.HouseDevices,
@@ -295,13 +297,12 @@ exports.autoApportionment = (roomIds)=>{
         }
 
         const minRoomId = fp.min(roomIds);
-        const share = fp.fromPairs(fp.map(roomId=>{
-            if(roomId === minRoomId){
+        return fp.fromPairs(fp.map(roomId => {
+            if (roomId === minRoomId) {
                 return [roomId, base + suffix];
             }
             return [roomId, base];
         })(roomIds));
-        return share;
     };
 
     return auto(roomIds);
@@ -310,3 +311,6 @@ exports.autoApportionment = (roomIds)=>{
 exports.newId = ()=>{
     return SnowFlake.next();
 };
+
+exports.formatMysqlDateTime = seconds => moment(seconds * 1000).format('YYYY-MM-DD HH:mm:ss');
+exports.mysqlDateTimeToStamp = time => moment(time).unix();

@@ -2,7 +2,6 @@
 require('include-node');
 const moment = require('moment');
 const {fn: momentProto} = require('moment');
-const fp = require('lodash/fp');
 const {bill} = require('../../module/HousesBills/HousesBills');
 const sinon = require('sinon');
 const spy = sinon.spy;
@@ -14,7 +13,7 @@ describe('HouseBills', function() {
         global.log = console;
         global.Util = Include('/libs/util');
         global.SnowFlake = {
-            next: fp.uniqueId,
+            next: () => '9922',
         };
         sandbox.stub(momentProto, 'unix');
         momentProto.unix.returns(2018);
@@ -76,7 +75,7 @@ describe('HouseBills', function() {
             bulkBillCreateSpy.getCall(0).args[0].should.be.eql([
                 {
                     amount: 800,
-                    billId: '1',
+                    billId: '9922',
                     createdAt: 2018,
                     houseId: '1',
                     paymentDay: 2018,
@@ -85,7 +84,7 @@ describe('HouseBills', function() {
             bulkBillFlowsCreateSpy.getCall(0).args[0].should.be.eql([
                 {
                     amount: 800,
-                    billId: '1',
+                    billId: '9922',
                     createdAt: 2018,
                     deviceId: 199,
                     paymentDay: 2018,

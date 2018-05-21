@@ -1508,6 +1508,35 @@ function SequelizeDefine()
     });
     exports.DevicesData = DevicesData;
 
+    exports.DeviceHeartbeats = sequelizeInstance.define('deviceHeartbeats', {
+        id:{
+            type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement:true,
+            primaryKey: true
+        },
+        deviceId:{
+            type: Sequelize.STRING(32),
+            allowNull: false,
+        },
+        total: {
+            type: Sequelize.DECIMAL(10,3),
+            allowNull: false
+        },
+        current: {
+            type: Sequelize.DECIMAL(10,3),
+            allowNull: false
+        },
+        voltage: {
+            type: Sequelize.DECIMAL(10,3),
+            allowNull: false
+        }
+    },{
+        timestamps: true,
+        freezeTableName: true
+    });
+    exports.DeviceHeartbeats.belongsTo(exports.HouseDevices, {foreignKey: 'deviceId', targetKey: 'deviceId'});
+    exports.HouseDevices.hasMany(exports.DeviceHeartbeats, {foreignKey: 'deviceId', sourceKey: 'deviceId'});
+
     exports.EventQueue = sequelizeInstance.define('eventqueue',
         {
             id:{

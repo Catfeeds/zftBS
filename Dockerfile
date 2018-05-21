@@ -1,4 +1,4 @@
-FROM registry-vpc.cn-hangzhou.aliyuncs.com/midian_prod/node:8.9.3
+FROM registry.cn-hangzhou.aliyuncs.com/midian_prod/node:8.9.3
 
 # Create app directory
 RUN mkdir -p /home/Service/zftBS
