@@ -54,11 +54,11 @@ const generateProject = (setting, dailyTo) => async projectId => {
                 log.info('devicePrePaid: ', userId, prePaidObj,
                     prePaidFlow);
 
-                return Util.PayWithOwed(userId, devicePrePaid.amount).then(
+                return Util.PayWithOwed(userId, prePaidObj.amount).then(
                     ret => {
                         if (ret.code !== ErrorCode.OK) {
                             log.error('PayWithOwed failed', userId,
-                                devicePrePaid, roomId, ret);
+                                prePaidObj, roomId, ret);
                             return;
                         }
 
@@ -68,7 +68,6 @@ const generateProject = (setting, dailyTo) => async projectId => {
                             then(() => Message.BalanceChange(projectId, userId,
                                 ret.amount,
                                 ret.balance));
-
                     },
                 );
             };
@@ -412,7 +411,8 @@ const priceOfHouse = (houseModels, deviceId) => {
     const houseIdOfDevices = (houses, deviceId) => fp.find(house => {
         const devices = fp.flatten(
             [house.devices, fp.flatten(fp.map('devices')(house.rooms))]);
-        return fp.any(fp.pipe(fp.get('deviceId'), fp.eq(deviceId)))(devices);
+        return fp.any(fp.pipe(fp.get('deviceId'), fp.eq(deviceId)))(
+            devices);
     })(houses);
     const house = houseIdOfDevices(houses, deviceId);
     return fp.getOr(0)(house.id)(deviceId2ElectricityPrice);

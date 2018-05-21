@@ -62,7 +62,6 @@ exports.PayWithOwed = async(userId, amount, t, payAble)=>{
     let ret;
     do {
         ret = await Pay(userId, amount, t, payAble);
-        console.log(ret);
         if(payAble && ret.code === ErrorCode.CASHNOTENOUGH){
             break;
         }
