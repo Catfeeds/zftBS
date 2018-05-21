@@ -302,21 +302,6 @@ exports.bill = (endTime) => Promise.all([
 },
 );
 
-exports.Run = () => {
-    const rule = new schedule.RecurrenceRule();
-    rule.hour = 1;
-    rule.minute = 0;
-    // rule.second = 5;
-    schedule.scheduleJob(rule, async () => {
-        console.log(
-            `Daily backend process for device daily bills, start from ${moment().
-                format('YYYY-MM-DD hh:mm:ss')}`);
-        return exports.bill(moment().subtract(1, 'day').endOf('day'));
-    });
-};
-
-exports.ModuleName = 'DeviceDailyBills';
-
 const usageOf = cost => (cost.endScale - cost.startScale) * 10000;
 const scaleOf = cost => cost.endScale * 10000;
 const heartbeatInProject = MySQL => async (timeFrom, timeTo, projectId) => {
@@ -417,3 +402,18 @@ const priceOfHouse = (houseModels, deviceId) => {
     const house = houseIdOfDevices(houses, deviceId);
     return fp.getOr(0)(house.id)(deviceId2ElectricityPrice);
 };
+
+exports.Run = () => {
+    const rule = new schedule.RecurrenceRule();
+    rule.hour = 3;
+    rule.minute = 30;
+    // rule.second = 5;
+    schedule.scheduleJob(rule, async () => {
+        console.log(
+            `Daily backend process for device daily bills, start from ${moment().
+                format('YYYY-MM-DD hh:mm:ss')}`);
+        return exports.bill(moment().subtract(1, 'day').endOf('day'));
+    });
+};
+
+exports.ModuleName = 'DeviceDailyBills';
