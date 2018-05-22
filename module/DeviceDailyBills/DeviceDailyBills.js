@@ -4,21 +4,6 @@ const moment = require('moment');
 const schedule = require('node-schedule');
 const {formatMysqlDateTime} = Include('/libs/util');
 
-function calcShare(amountAndPrice, percent) {
-    return (
-        new bigdecimal.BigDecimal(
-            amountAndPrice.amount.toString())
-    ).multiply(
-        new bigdecimal.BigDecimal(
-            percent.toString()),
-    ).
-        divide(
-            new bigdecimal.BigDecimal(
-                '100'), 0,
-            bigdecimal.RoundingMode.HALF_UP()).
-        intValue();
-}
-
 const generateProject = (setting, dailyTo) => async projectId => {
     const dailyFrom = moment(dailyTo).startOf('days').unix();
     const paymentDay = moment(dailyTo).unix();
@@ -30,52 +15,15 @@ const generateProject = (setting, dailyTo) => async projectId => {
                 return;
             }
             // console.log('contracts', fp.map(a => a.toJSON())(contracts));
-            const houseIds = fp.compact(
-                fp.map(fp.get('room.houseId'))(contracts));
-            const roomId2ContractId = fp.fromPairs(
-                fp.map(contract => [contract.roomId, contract.id])(contracts));
-            const roomId2UserId = fp.map(
-                c => ({roomId: c.roomId, userId: c.userId}))(contracts);
-            // console.log('houseIds', houseIds);
-            // console.log('roomId2ContractId', roomId2ContractId);
-            const payDevice = (devicePrePaid, roomId) => {
-                const userId = roomId2UserId[roomId];
-
-                const flowId = Util.newId();
-                const prePaidObj = fp.assign(devicePrePaid,
-                    {id: Util.newId(), flowId: flowId});
-
-                const prePaidFlow = {
-                    id: flowId,
-                    projectId: projectId,
-                    contractId: devicePrePaid.contractId,
-                    paymentDay: devicePrePaid.paymentDay,
-                    category: 'device',
-                };
-
-                log.info('devicePrePaid: ', userId, prePaidObj,
-                    prePaidFlow);
-
-                return Util.PayWithOwed(userId, prePaidObj.amount).then(
-                    ret => {
-                        if (ret.code !== ErrorCode.OK) {
-                            log.error('PayWithOwed failed', userId,
-                                prePaidObj, roomId, ret);
-                            return;
-                        }
-
-                        return Promise.all([
-                            MySQL.DevicePrePaid.create(prePaidObj),
-                            MySQL.PrePaidFlows.create(prePaidFlow)]).
-                            then(() => Message.BalanceChange(projectId, userId,
-                                ret.amount,
-                                ret.balance));
-                    },
-                );
-            };
+            const houseIds = fp.uniq(fp.compact(
+                fp.map(fp.get('room.houseId'))(contracts)));
+            // const roomId2ContractId = fp.fromPairs(
+            //     fp.map(contract => [contract.roomId, contract.id])(contracts));
+            // const roomId2UserId = fp.fromPairs(fp.map(
+            //     c => [c.roomId, c.userId])(contracts));
 
             let houseId2Rooms = {};
-            let deviceId2RoomId = {};
+            let deviceId2Room = {};
             fp.each(contract => {
                 if (!contract.room) {
                     return;
@@ -90,7 +38,11 @@ const generateProject = (setting, dailyTo) => async projectId => {
                 houseId2Rooms[houseId].push(roomId);
 
                 fp.each(device => {
-                    deviceId2RoomId[device.deviceId] = contract.roomId;
+                    deviceId2Room[device.deviceId] = fp.assign({
+                        projectId,
+                        contractId: contract.id,
+                        userId: contract.userId,
+                    })(contract.room);
                 })(contract.room.devices);
 
             })(contracts);
@@ -136,41 +88,39 @@ const generateProject = (setting, dailyTo) => async projectId => {
                         heartbeats => {
                             // console.log('houseCostMapping', houseCostMapping);
                             fp.each(costs => {
+                                // console.log('costs', costs);
                                 fp.each(cost => {
                                     //
                                     const amountAndPrice = getAmountAndPrice(
                                         cost);
-                                    const roomId = deviceId2RoomId[cost.deviceId];
+                                    const room = deviceId2Room[cost.deviceId];
 
                                     if (cost.public) {
                                         //公区表
                                         const apportionments = fp.toPairs(
                                             getApportionment(cost.houseId));
-                                        fp.each(([roomId, percent]) => {
-                                            const amountOfShare = calcShare(
-                                                amountAndPrice, percent);
-                                            const devicePrePaid = {
+                                        fp.each(([, percent]) => {
+                                            payDevice(MySQL)({
                                                 type: 'ELECTRICITY',
-                                                contractId: roomId2ContractId[roomId],
+                                                contractId: room.contractId,
                                                 projectId,
                                                 deviceId: cost.deviceId,
-                                                amount: -amountOfShare,
+                                                amount: -calcShare(
+                                                    amountAndPrice, percent),
                                                 scale: scaleOf(cost),
                                                 usage: usageOf(cost),
                                                 price: amountAndPrice.price,
                                                 share: percent,
                                                 paymentDay,
                                                 createdAt: moment().unix(),
-                                            };
-                                            payDevice(devicePrePaid,
-                                                roomId);
+                                            }, room);
                                         })(apportionments);
                                     }
                                     else {
                                         //私有表
-                                        const devicePrePaid = {
+                                        payDevice(MySQL)({
                                             type: 'ELECTRICITY',
-                                            contractId: roomId2ContractId[roomId],
+                                            contractId: room.contractId,
                                             projectId,
                                             deviceId: cost.deviceId,
                                             amount: -amountAndPrice.amount,
@@ -179,8 +129,7 @@ const generateProject = (setting, dailyTo) => async projectId => {
                                             price: amountAndPrice.price,
                                             paymentDay,
                                             createdAt: moment().unix(),
-                                        };
-                                        payDevice(devicePrePaid, roomId);
+                                        }, room);
                                     }
 
                                 })(costs);
@@ -226,6 +175,42 @@ const devicesWithHeartbeats = (devicesWithPrice, heartbeats) => {
         fp.map(fp.defaults({startScale: 0, endScale: 0}))(
             deviceInDifference));
     return fp.defaults(defaultTemplates)(heartbeats);
+};
+
+const payDevice = MySQL => async (devicePrePaid, room) => {
+    console.log('payDevice', devicePrePaid, room);
+    const {userId, id: roomId, projectId} = room;
+    const flowId = Util.newId();
+    const prePaidObj = fp.assign(devicePrePaid,
+        {id: Util.newId(), flowId: flowId});
+
+    const prePaidFlow = {
+        id: flowId,
+        projectId,
+        contractId: devicePrePaid.contractId,
+        paymentDay: devicePrePaid.paymentDay,
+        category: 'device',
+    };
+
+    log.info('devicePrePaid: ', userId, prePaidObj,
+        prePaidFlow);
+
+    return Util.PayWithOwed(userId, prePaidObj.amount).then(
+        ret => {
+            if (ret.code !== ErrorCode.OK) {
+                log.error('PayWithOwed failed', userId,
+                    prePaidObj, roomId, ret);
+                return;
+            }
+
+            return Promise.all([
+                MySQL.DevicePrePaid.create(prePaidObj),
+                MySQL.PrePaidFlows.create(prePaidFlow)]).
+                then(() => Message.BalanceChange(projectId, userId,
+                    ret.amount,
+                    ret.balance));
+        },
+    );
 };
 
 const usageOf = cost => (cost.endScale - cost.startScale) * 10000;
@@ -296,6 +281,14 @@ const allContracts = MySQL => async (
     ],
 });
 
+const calcShare = (amountAndPrice, percent) => (
+    new bigdecimal.BigDecimal(amountAndPrice.amount.toString())
+).multiply(new bigdecimal.BigDecimal(percent.toString()),
+).
+    divide(new bigdecimal.BigDecimal('100'), 0,
+        bigdecimal.RoundingMode.HALF_UP()).
+    intValue();
+
 const costOfRoom = (price, cost) => {
     const amount = amountOf(cost.endScale - cost.startScale, price);
     return {
@@ -313,7 +306,6 @@ const amountOf = (base, price) => {
 const priceOfHouse = (houseDictionary, deviceId2ElectricityPrice) =>
     deviceId => {
         const house = houseDictionary(deviceId);
-        console.log(house, deviceId);
         return fp.getOr(0)(house.id)(deviceId2ElectricityPrice);
     };
 
@@ -327,7 +319,6 @@ const houseIdRoomId2Share = apportionments =>
 const houseIdOfDevices = houses => deviceId => fp.find(house => {
     const devices = fp.flatten(
         [house.devices, fp.flatten(fp.map('devices')(house.rooms))]);
-    console.log(devices);
     return fp.any(fp.pipe(fp.get('deviceId'), fp.eq(deviceId)))(
         devices);
 })(houses);

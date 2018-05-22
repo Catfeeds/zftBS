@@ -4,7 +4,7 @@ const moment = require('moment');
 const {fn: momentProto} = require('moment');
 const {bill} = require('../../module/DeviceDailyBills/DeviceDailyBills');
 const sinon = require('sinon');
-const spy = sinon.spy;
+const {spy, stub} = sinon;
 
 const sandbox = sinon.sandbox.create();
 
@@ -22,7 +22,7 @@ const fixedMock = {
         col: () => {
         },
     },
-    Literal: () => '1',
+    Literal: () => 1,
 };
 describe('DeviceDailyBills', function() {
     before(() => {
@@ -44,6 +44,7 @@ describe('DeviceDailyBills', function() {
     it('should send out query as expected', async () => {
         const devicePrePaidCreateSpy = spy();
         const prePaidFlowsCreateSpy = spy();
+        const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
         global.MySQL = {
             Projects: {
@@ -103,8 +104,8 @@ describe('DeviceDailyBills', function() {
                     }],
             },
             CashAccount: {
-                findOne: async () => ({id: 123, balance: 100}),
-                update: async () => [{id: 123}],
+                findOne: async () => ({id: 123, balance: 100, locker: 1}),
+                update: cashAccountUpdateSpy,
             },
             DevicePrePaid: {
                 create: devicePrePaidCreateSpy,
@@ -118,6 +119,7 @@ describe('DeviceDailyBills', function() {
         await bill(moment()).then(() => {
             devicePrePaidCreateSpy.should.have.been.called;
             prePaidFlowsCreateSpy.should.have.been.called;
+            cashAccountUpdateSpy.should.have.been.called;
             devicePrePaidCreateSpy.getCall(0).args[0].should.be.eql(
                 {
                     amount: -3330000,
@@ -141,6 +143,16 @@ describe('DeviceDailyBills', function() {
                     paymentDay: 2018,
                     projectId: 1,
                 });
+            cashAccountUpdateSpy.getCall(0).args.should.be.eql([
+                {
+                    balance: 1,
+                    locker: 1,
+                }, {
+                    where: {
+                        locker: 1,
+                        userId: 33221,
+                    },
+                }]);
         });
     });
     it('should generate for multiple devices in a single room', async () => {
