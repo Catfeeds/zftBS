@@ -48,7 +48,7 @@ const generateProject = (setting, dailyTo) => async projectId => {
 
             })(contracts);
 
-            console.log('deviceId2Room', deviceId2Room);
+            // console.log('deviceId2Room', deviceId2Room);
 
             return Promise.all([
                 Util.getHouses(projectId, dailyTo, 'CLIENT', houseIds).
@@ -64,94 +64,24 @@ const generateProject = (setting, dailyTo) => async projectId => {
                 ([houses, apportionments]) => {
                     const houseApportionment = houseIdRoomId2Share(
                         apportionments);
-                    // console.log('houseApportionment', houseApportionment);
+                    // console.log('houseApportionment', apportionments, houseApportionment);
                     // console.log('houses', fp.map(a => a.toJSON())(houses));
                     const deviceId2ElectricityPrice = devicesWithItsPrice(
                         houses);
                     const deviceIdDic = houseIdOfDevices(houses);
-                    const allDeviceIds2 = allDeviceIds(houses);
+                    const deviceIds = allDeviceIds(houses);
 
-                    const getAmountAndPrice = (cost) => {
-                        const price = priceOfHouse(
-                            deviceIdDic, deviceId2ElectricityPrice)(
-                            cost.deviceId);
-                        return costOfRoom(price, cost);
-                    };
-                    const getApportionment = houseId => {
-                        const apportionment = houseApportionment[houseId];
-                        return apportionment ?
-                            apportionment :
-                            Util.autoApportionment(
-                                fp.map('id')(houseId2Rooms[houseId]));
-                    };
                     // console.log('heartbeatInProject: ', dailyFrom,
                     //     dailyTo.unix(), projectId);
                     return heartbeatInProject(MySQL)(dailyFrom, dailyTo.unix(),
-                        projectId).then(
-                        heartbeats => {
-                            console.log('heartbeats', heartbeats);
-                            fp.each(costs => {
-                                console.log('costs', costs);
-                                fp.each(cost => {
-                                    //
-                                    const amountAndPrice = getAmountAndPrice(
-                                        cost);
-                                    const room = deviceId2Room[cost.deviceId];
-                                    console.log('room', cost, room);
-                                    const device = fp.find(
-                                        fp.pipe(fp.get('deviceId'),
-                                            fp.eq(cost.deviceId)))(
-                                        allDeviceIds2);
-
-                                    if (!room && device) {
-
-                                        //公区表
-                                        const apportionments = fp.toPairs(
-                                            getApportionment(device.houseId));
-
-                                        const roomOf = searchRoomInHouse(
-                                            device);
-                                        console.log('device in public',
-                                            apportionments, device);
-                                        fp.each(([roomId, percent]) => {
-                                            payDevice(MySQL)({
-                                                type: 'ELECTRICITY',
-                                                contractId: roomOf(
-                                                    roomId).contractId,
-                                                projectId,
-                                                deviceId: cost.deviceId,
-                                                amount: -calcShare(
-                                                    amountAndPrice, percent),
-                                                scale: scaleOf(cost),
-                                                usage: usageOf(cost),
-                                                price: amountAndPrice.price,
-                                                share: percent,
-                                                paymentDay,
-                                                createdAt: moment().unix(),
-                                            }, device);
-                                        })(apportionments);
-                                    }
-
-                                    //私有表
-                                    return room && payDevice(MySQL)({
-                                        type: 'ELECTRICITY',
-                                        contractId: room.contractId,
-                                        projectId,
-                                        deviceId: cost.deviceId,
-                                        amount: -amountAndPrice.amount,
-                                        scale: scaleOf(cost),
-                                        usage: usageOf(cost),
-                                        price: amountAndPrice.price,
-                                        paymentDay,
-                                        createdAt: moment().unix(),
-                                    }, room);
-
-                                })(costs);
-                            })(devicesWithHeartbeats(allDeviceIds2,
-                                heartbeats));
-
-                        },
-                    );
+                        projectId).
+                        then(billOnHeartbeats(MySQL)({
+                            deviceIds,
+                            deviceId2Room, houseApportionment,
+                            deviceId2ElectricityPrice, deviceIdDic,
+                            houseId2Rooms,
+                            projectId, paymentDay,
+                        }));
                 },
             );
         },
@@ -228,7 +158,8 @@ const payDevice = MySQL => async (devicePrePaid, room) => {
 };
 
 const searchRoomInHouse = device => roomId =>
-    fp.find(fp.pipe(fp.get('id'), a => a.toString(), fp.eq(roomId.toString())))(device.rooms);
+    fp.find(fp.pipe(fp.get('id'), a => a.toString(), fp.eq(roomId.toString())))(
+        device.rooms);
 const usageOf = cost => (cost.endScale - cost.startScale) * 10000;
 const scaleOf = cost => cost.endScale * 10000;
 const heartbeatInProject = MySQL => async (timeFrom, timeTo, projectId) => {
@@ -354,6 +285,86 @@ const devicesWithItsPrice = houses => {
             fp.getOr(0)('price')))(
         fp.groupBy('id')(fp.map(fp.pick(['id', 'prices']))(
             houses)));
+};
+
+const getAmountAndPrice = (deviceId2ElectricityPrice, deviceIdDic) => cost => {
+    const price = priceOfHouse(
+        deviceIdDic, deviceId2ElectricityPrice)(
+        cost.deviceId);
+    return costOfRoom(price, cost);
+};
+const getApportionment = (houseApportionment, houseId2Rooms) => houseId => {
+    const apportionment = houseApportionment[houseId];
+    return apportionment ?
+        apportionment :
+        Util.autoApportionment(
+            fp.map('id')(houseId2Rooms[houseId]));
+};
+
+const billOnHeartbeats = MySQL =>
+    dataMap => heartbeats => {
+        fp.each(costs => {
+            fp.each(singleDeviceProcess(MySQL)(dataMap))(costs);
+        })(devicesWithHeartbeats(dataMap.deviceIds,
+            heartbeats));
+
+    };
+
+const singleDeviceProcess = MySQL => ({
+    deviceIds, deviceId2Room, houseApportionment,
+    deviceId2ElectricityPrice, deviceIdDic, houseId2Rooms,
+    projectId, paymentDay,
+}) => cost => {
+    const amountAndPrice = getAmountAndPrice(
+        deviceId2ElectricityPrice, deviceIdDic)(
+        cost);
+    const room = deviceId2Room[cost.deviceId];
+    const device = fp.find(fp.pipe(fp.get('deviceId'), fp.eq(cost.deviceId)))(
+        deviceIds);
+
+    if (!room && device) {
+        //公区表
+        const apportionments = fp.toPairs(
+            getApportionment(houseApportionment, houseId2Rooms)(
+                device.houseId));
+
+        const roomOf = searchRoomInHouse(
+            device);
+        // console.log('device in public',
+        //     apportionments, device);
+        fp.each(([roomId, percent]) => {
+            payDevice(MySQL)({
+                type: 'ELECTRICITY',
+                contractId: roomOf(
+                    roomId).contractId,
+                projectId,
+                deviceId: cost.deviceId,
+                amount: -calcShare(
+                    amountAndPrice, percent),
+                scale: scaleOf(cost),
+                usage: usageOf(cost),
+                price: amountAndPrice.price,
+                share: percent,
+                paymentDay,
+                createdAt: moment().unix(),
+            }, device);
+        })(apportionments);
+    }
+
+    //私有表
+    return room && payDevice(MySQL)({
+        type: 'ELECTRICITY',
+        contractId: room.contractId,
+        projectId,
+        deviceId: cost.deviceId,
+        amount: -amountAndPrice.amount,
+        scale: scaleOf(cost),
+        usage: usageOf(cost),
+        price: amountAndPrice.price,
+        paymentDay,
+        createdAt: moment().unix(),
+    }, room);
+
 };
 
 exports.Run = () => {
