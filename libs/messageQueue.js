@@ -3,7 +3,7 @@ const fp = require('lodash/fp');
 
 class MessageQueue {
 
-    constructor(name, host, port, passwd, retryTime){
+    constructor(name, host, port, passwd, retryTime = 5){
         this.name = name;
         log.sys('redis create ', name, host, port, passwd);
         this.client = redis.createClient({
@@ -13,7 +13,7 @@ class MessageQueue {
             retry_strategy: (options)=>{
                 //
                 log.error(options.error, options.total_retry_time, options.attempt);
-                return retryTime || 5;
+                return options.attempt < 10 ? retryTime : null;
             }
         });
         this.client.auth(passwd);
