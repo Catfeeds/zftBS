@@ -34,6 +34,8 @@ const generateProject = (setting, dailyTo) => async projectId => {
                 fp.map(fp.get('room.houseId'))(contracts));
             const roomId2ContractId = fp.fromPairs(
                 fp.map(contract => [contract.roomId, contract.id])(contracts));
+            const roomId2UserId = fp.map(
+                c => ({roomId: c.roomId, userId: c.userId}))(contracts);
             // console.log('houseIds', houseIds);
             // console.log('roomId2ContractId', roomId2ContractId);
             const payDevice = (devicePrePaid, roomId) => {
@@ -71,48 +73,14 @@ const generateProject = (setting, dailyTo) => async projectId => {
                     },
                 );
             };
-            const payDaily = (daily) => {
-                const flowId = Util.newId();
-                const createDaily = fp.assign(daily,
-                    {id: Util.newId(), flowId: flowId});
-                const prePaidFlow = {
-                    id: flowId,
-                    projectId: projectId,
-                    contractId: daily.contractId,
-                    paymentDay: daily.paymentDay,
-                    category: 'device',
-                };
-                log.info('dailyPrePaid: ', daily.userId, createDaily,
-                    prePaidFlow);
 
-                Util.PayWithOwed(daily.userId, daily.amount).then(
-                    ret => {
-                        if (ret.code !== ErrorCode.OK) {
-                            log.error('PayWithOwed failed', daily);
-                            return;
-                        }
-
-                        MySQL.DailyPrePaid.create(daily);
-                        MySQL.PrePaidFlows.create(prePaidFlow);
-                        Message.BalanceChange(projectId, daily.userId,
-                            ret.amount, ret.balance);
-                    },
-                );
-            };
-
-            let deviceIds = [];
             let houseId2Rooms = {};
             let deviceId2RoomId = {};
-            let roomId2UserId = {};
-            let roomDevicePrice = {};
-            let dailyPrePaid = [];
             fp.each(contract => {
                 if (!contract.room) {
                     return;
                 }
-
                 //todo: 是否合同生效当天就进行计费
-
                 const roomId = contract.room.id;
                 const houseId = contract.room.houseId;
 
@@ -120,58 +88,11 @@ const generateProject = (setting, dailyTo) => async projectId => {
                     houseId2Rooms[houseId] = [];
                 }
                 houseId2Rooms[houseId].push(roomId);
-                roomId2UserId[contract.roomId] = contract.userId;
 
                 fp.each(device => {
                     deviceId2RoomId[device.deviceId] = contract.roomId;
-                    deviceIds.push(device.deviceId);
                 })(contract.room.devices);
 
-                //解析expenses中的预付费信息
-                fp.each(expense => {
-                    if (!expense.configId ||
-                        expense.pattern !== 'prepaid') {
-                        return;
-                    }
-
-                    //每日扣费
-                    if (expense.frequency === 'day') {
-                        dailyPrePaid.push({
-                            roomId: contract.roomId,
-                            userId: contract.userId,
-                            configId: expense.configId,
-                            contractId: contract.id,
-                            projectId: projectId,
-                            configName: expense.configId,
-                            paymentDay: paymentDay,
-                            amount: expense.rent,
-                            createdAt: moment().unix(),
-                        });
-                    }
-                    else {
-                        //如果合同中有单价，则优先使用合同中的单价
-                        switch (expense.configId) {
-                        case 1041: {
-                            //electric
-                            if (!roomDevicePrice[roomId]) {
-                                roomDevicePrice[roomId] = {};
-                            }
-
-                            roomDevicePrice[roomId].ELECTRIC = expense.rent;
-                        }
-                            break;
-                        case 1043: {
-                            //water
-                            if (!roomDevicePrice[roomId]) {
-                                roomDevicePrice[roomId] = {};
-                            }
-
-                            roomDevicePrice[roomId].WATER = expense.rent;
-                        }
-                            break;
-                        }
-                    }
-                })(contract.expenses);
             })(contracts);
 
             return Promise.all([
@@ -197,22 +118,10 @@ const generateProject = (setting, dailyTo) => async projectId => {
                     const allDeviceIds2 = allDeviceIds(houses);
 
                     const getAmountAndPrice = (cost) => {
-                        const roomId = deviceId2RoomId[cost.deviceId];
-                        if (!roomDevicePrice[roomId]) {
-                            const price = priceOfHouse(
-                                deviceIdDic, deviceId2ElectricityPrice)(
-                                cost.deviceId);
-                            return costOfRoom(price, cost);
-                        }
-                        else {
-                            const price = roomDevicePrice[roomId].ELECTRIC;
-                            const amount = amountOf(cost.endScale -
-                                cost.startScale, price).intValue();
-                            return {
-                                amount: amount,
-                                price: price,
-                            };
-                        }
+                        const price = priceOfHouse(
+                            deviceIdDic, deviceId2ElectricityPrice)(
+                            cost.deviceId);
+                        return costOfRoom(price, cost);
                     };
                     const getApportionment = houseId => {
                         const apportionment = houseApportionment[houseId];
@@ -278,19 +187,15 @@ const generateProject = (setting, dailyTo) => async projectId => {
                             })(devicesWithHeartbeats(allDeviceIds2,
                                 heartbeats));
 
-                            //do daily prepaid
-                            log.info('do daily prepaid: ', dailyPrePaid);
-                            fp.each(payDaily)(dailyPrePaid);
                         },
                     );
                 },
             );
         },
-    );
-    // .catch(err => {
-    //     log.error(
-    //         `error ${err} in calculating: ${projectId} at time ${dailyTo}`);
-    // });
+    ).catch(err => {
+        log.error(
+            `error ${err} in calculating: ${projectId} at time ${dailyTo}`);
+    });
 };
 
 const generate = (settings, endTime) =>
@@ -317,8 +222,9 @@ const devicesWithHeartbeats = (devicesWithPrice, heartbeats) => {
     const deviceInDifference = fp.differenceBy(
         fp.pipe(fp.get('deviceId'), dId => dId.toString()))(devicesWithPrice)(
         uniqueDeviceIdsFromHeartbeats);
-    const defaultTemplates = fp.groupBy('deviceId')(fp.map(fp.defaults({startScale: 0, endScale: 0}))(
-        deviceInDifference));
+    const defaultTemplates = fp.groupBy('deviceId')(
+        fp.map(fp.defaults({startScale: 0, endScale: 0}))(
+            deviceInDifference));
     return fp.defaults(defaultTemplates)(heartbeats);
 };
 
