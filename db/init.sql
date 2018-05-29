@@ -384,11 +384,14 @@ create table if not exists `devicesChannels`
 create table if not exists `devicesData`
 (
 	`id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-	`channelId` varchar(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-	`reading` int(10) UNSIGNED NOT NULL,
-	`time` bigint(20) UNSIGNED NOT NULL,
+	deviceId varchar(32) not null,
+	channelId varchar(3) not null,
+	reading bigint unsigned default '0' not null,
+	rateReading bigint default '0' not null,
+	time bigint unsigned not null,
 	PRIMARY KEY (`id`, `channelId`) USING BTREE,
-	INDEX `CHANNEL`(`channelId`) USING BTREE
+	INDEX `CHANNEL`(`channelId`) USING BTREE,
+	INDEX `DEVICEID`(`deviceId`) USING BTREE
 ) ENGINE = InnoDB;
 
 create table if not exists `deviceHeartbeats`
@@ -586,8 +589,8 @@ INSERT INTO `zft`.`projects` (`id`, `name`, `externalId`) VALUES ('100', '加州
 INSERT INTO `zft`.`auth` (`id`, `projectId`, `username`, `password`, createdAt, updatedAt)
 VALUES (1, 100, 'admin100', '5f4dcc3b5aa765d61d8327deb882cf99',  NOW(),  NOW()),
 	(2, 101, 'admin101', '5f4dcc3b5aa765d61d8327deb882cf99',  NOW(),  NOW());
-INSERT INTO zft.bindings (`id`, authId, platform, deviceId, createdAt, updatedAt)
-    VALUES (6385448056539713536, 1, 'ios', '3227dcbae04c4f3ba5034d86a57c30e0', NOW(), NOW());
+INSERT INTO zft.bindings (authId, platform, deviceId, createdAt, updatedAt)
+    VALUES (1, 'ios', '3227dcbae04c4f3ba5034d86a57c30e0', NOW(), NOW());
 
 INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`)
 VALUES ('receive', '100', 'manual', '现金', 'PASSED ', NOW(), NOW(), NULL),
@@ -4321,6 +4324,7 @@ INSERT INTO `zft`.`banks`(`id`, `tag`, `name`) VALUES (160, 'NYNB', '广东南�
 INSERT INTO `zft`.`banks`(`id`, `tag`, `name`) VALUES (161, 'LYBANK', '洛阳银行');
 INSERT INTO `zft`.`banks`(`id`, `tag`, `name`) VALUES (162, 'NHQS', '农信银清算中心');
 INSERT INTO `zft`.`banks`(`id`, `tag`, `name`) VALUES (163, 'CBBQS', '城市商业银行资金清算中心');
+
 
 
 INSERT INTO zft.devices (deviceId, projectId, name, tag, type, freq, driver, memo, status, createdAt, updatedAt, deletedAt) VALUES ('YTL043000101485', 100, '', '', 'ELECTRICITY', 60000, 'YTL/Electric/YTL-BUSvA.1.02.js', '', '{"switch":"EMC_ON"}', '2018-02-28 12:32:00', '2018-03-04 10:07:37', null);

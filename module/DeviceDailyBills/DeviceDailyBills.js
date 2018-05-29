@@ -4,7 +4,7 @@ const moment = require('moment');
 const schedule = require('node-schedule');
 const {formatMysqlDateTime} = Include('/libs/util');
 
-const generateProject = (setting, dailyTo) => async projectId => {
+const generateProject = dailyTo => async projectId => {
     const dailyFrom = moment(dailyTo).startOf('days').unix();
     const paymentDay = moment(dailyTo).unix();
 
@@ -91,22 +91,15 @@ const generateProject = (setting, dailyTo) => async projectId => {
     });
 };
 
-const generate = (settings, endTime) =>
+const generate = endTime =>
     projects =>
         Promise.all(
-            fp.map(fp.pipe(fp.get('id'), generateProject(settings, endTime)))(
+            fp.map(fp.pipe(fp.get('id'), generateProject(endTime)))(
                 projects)).
             then(() => log.warn('DeviceDailyBills Done...'));
 
-exports.bill = (endTime) => Promise.all([
-    MySQL.Settings.findAll({}),
-    MySQL.Projects.findAll({attributes: ['id']}),
-]).then(([settingRecords, projects]) => {
-    const setting = fp.fromPairs(
-        fp.map(setting => [setting.id, setting])(settingRecords));
-    return generate(setting, endTime)(projects);
-},
-);
+exports.bill = endTime => MySQL.Projects.findAll({attributes: ['id']}).
+    then(generate(endTime));
 
 const devicesWithHeartbeats = (devicesWithPrice, heartbeats) => {
     const uniqueDeviceIdsFromHeartbeats = fp.flatten(
@@ -122,7 +115,6 @@ const devicesWithHeartbeats = (devicesWithPrice, heartbeats) => {
 };
 
 const payDevice = MySQL => async (devicePrePaid, room) => {
-    console.log('payDevice', devicePrePaid, room);
     const {userId, id: roomId, projectId} = room;
     const flowId = Util.newId();
     const prePaidObj = fp.assign(devicePrePaid,

@@ -15,9 +15,6 @@ const fixedMock = {
     HouseApportionment: {
         findAll: async () => [],
     },
-    Settings: {
-        findAll: async () => [],
-    },
     Sequelize: {
         transaction: async func => func({}),
         fn: () => {

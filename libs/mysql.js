@@ -1011,7 +1011,7 @@ function SequelizeDefine()
         timestamps: false,
         freezeTableName: true
     });
-    exports.DailyPrePaid = dailyPrePaid;
+    exports.DailyPrepaid = dailyPrePaid;
 
     const prePaidFlows = sequelizeInstance.define('prePaidFlows', {
         id: {
