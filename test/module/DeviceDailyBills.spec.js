@@ -104,10 +104,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100, locker: 1}),
                 update: cashAccountUpdateSpy,
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -224,10 +224,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: async () => [{id: 123}],
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -346,10 +346,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: async () => [{id: 123}],
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -438,10 +438,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: async () => [{id: 123}],
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -578,10 +578,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: cashAccountUpdateSpy,
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -760,10 +760,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: cashAccountUpdateSpy,
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -985,10 +985,10 @@ describe('DeviceDailyBills', function() {
                 findOne: async () => ({id: 123, balance: 100}),
                 update: cashAccountUpdateSpy,
             },
-            DevicePrePaid: {
+            DevicePrepaid: {
                 create: devicePrePaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,

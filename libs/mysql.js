@@ -916,25 +916,31 @@ function SequelizeDefine()
     const devicePrePaid = sequelizeInstance.define('devicePrePaid', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
+            autoIncrement: true,
             primaryKey: true
         },
-        flowId:{
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
-        },
-        type:{
-            type: Sequelize.STRING(16),
-            allowNull: false
-        },
-        contractId:{
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
-        },
-        projectId:{
+        flowId: {
             type: Sequelize.BIGINT.UNSIGNED,  //项目ID
             allowNull: false
         },
-        deviceId:{
+        type: {
+            type: Sequelize.STRING(16),
+            allowNull: false
+        },
+        contractId: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        projectId: {
+            type: Sequelize.BIGINT.UNSIGNED,  //项目ID
+            allowNull: false
+        },
+        configId: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false,
+            defaultValue: 1041,
+        },
+        deviceId: {
             type: Sequelize.STRING(32),
             allowNull: false
         },
@@ -947,6 +953,11 @@ function SequelizeDefine()
             type: Sequelize.BIGINT,
             allowNull: false
         },
+        share: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 100
+        },
         usage: {
             type: Sequelize.BIGINT,
             allowNull: false
@@ -955,24 +966,22 @@ function SequelizeDefine()
             type: Sequelize.INTEGER,
             allowNull: false
         },
-        share: {
-            type: Sequelize.INTEGER,
-            allowNull: false,
-            defaultValue: 100
-        },
         paymentDay: {
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         },
-        createdAt:{
+        createdAt: {
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: false
         }
-    },{
+    }, {
         timestamps: false,
         freezeTableName: true
     });
-    exports.DevicePrePaid = devicePrePaid;
+    exports.DevicePrepaid = devicePrePaid;
+    exports.Contracts.hasMany(exports.DevicePrepaid, {as: 'devicePrePaid'});
+    exports.DevicePrepaid.belongsTo(exports.Settings, {foreignKey: 'configId', targetKey: 'id'});
+
     const dailyPrePaid = sequelizeInstance.define('dailyPrePaid', {
         id: {
             type: Sequelize.BIGINT.UNSIGNED,
@@ -1012,6 +1021,7 @@ function SequelizeDefine()
         freezeTableName: true
     });
     exports.DailyPrepaid = dailyPrePaid;
+    exports.DailyPrepaid.belongsTo(exports.Settings, {foreignKey: 'configId', targetKey: 'id'});
 
     const prePaidFlows = sequelizeInstance.define('prePaidFlows', {
         id: {
@@ -1026,25 +1036,35 @@ function SequelizeDefine()
             type: Sequelize.BIGINT.UNSIGNED,
             allowNull: true
         },
+        paymentDay: {
+            type: Sequelize.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        amount: {
+            type: Sequelize.INTEGER,    //单位分
+            allowNull: false,
+            defaultValue: 0
+        },
+        balance: {
+            type: Sequelize.INTEGER,    //单位分
+            allowNull: false,
+            defaultValue: 0
+        },
         category:{
             type: Sequelize.STRING(8),
             allowNull: false,
             validate: {
                 isIn: [['device', 'daily']]
             }
-        },
-        paymentDay: {
-            type: Sequelize.BIGINT.UNSIGNED,
-            allowNull: false
-        },
+        }
     },{
         timestamps: true,
         paranoid: true,
         freezeTableName: true
     });
-    exports.PrePaidFlows = prePaidFlows;
-    // prePaidFlows.hasOne(devicePrePaid);
-    // prePaidFlows.hasOne(dailyPrePaid);
+    exports.PrepaidFlows = prePaidFlows;
+    exports.DevicePrepaid.belongsTo(exports.PrepaidFlows, {foreignKey: 'flowId', targetKey: 'id'});
+    exports.DailyPrepaid.belongsTo(exports.PrepaidFlows, {foreignKey: 'flowId', targetKey: 'id'});
 
     exports.BillFlows = sequelizeInstance.define('billflows', {
         billId: {

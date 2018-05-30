@@ -68,7 +68,7 @@ describe('DailyPrepaid', function() {
             DailyPrepaid: {
                 create: dailyPrepaidCreateSpy,
             },
-            PrePaidFlows: {
+            PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
             ...fixedMock,
@@ -94,6 +94,9 @@ describe('DailyPrepaid', function() {
                     category: 'daily',
                     contractId: 443,
                     id: 444222,
+                    createdAt: 2018,
+                    balance: 1,
+                    amount: -99,
                     paymentDay: 2018,
                     projectId: 1,
                 });

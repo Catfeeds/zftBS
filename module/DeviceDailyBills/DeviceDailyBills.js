@@ -140,8 +140,8 @@ const payDevice = MySQL => async (devicePrePaid, room) => {
             }
 
             return Promise.all([
-                MySQL.DevicePrePaid.create(prePaidObj),
-                MySQL.PrePaidFlows.create(prePaidFlow)]).
+                MySQL.DevicePrepaid.create(prePaidObj),
+                MySQL.PrepaidFlows.create(prePaidFlow)]).
                 then(() => Message.BalanceChange(projectId, userId,
                     ret.amount,
                     ret.balance));

@@ -33,19 +33,12 @@ const generateProject = dailyTo => async projectId => {
 
 const prepaidRecord = (projectId, paymentDay) => async prepaidObject => {
     const flowId = Util.newId();
-    const {id: contractId, userId, rent, configId} = prepaidObject;
+    const {id: contractId, userId, rent, configId, roomId} = prepaidObject;
     const prePaidObj = {
         configId, contractId, projectId, id: Util.newId(),
         flowId, amount: -rent, createdAt: moment().unix(), paymentDay,
     };
 
-    const prePaidFlow = {
-        projectId,
-        id: flowId,
-        contractId,
-        paymentDay,
-        category: 'daily',
-    };
     return Util.PayWithOwed(userId, prePaidObj.amount).then(
         ret => {
             if (ret.code !== ErrorCode.OK) {
@@ -54,9 +47,20 @@ const prepaidRecord = (projectId, paymentDay) => async prepaidObject => {
                 return;
             }
 
+            const prePaidFlow = {
+                projectId,
+                id: flowId,
+                contractId,
+                paymentDay,
+                category: 'daily',
+                amount: fp.getOr(0)('result.amount')(ret),
+                balance: fp.getOr(0)('result.balance')(ret),
+                createdAt: prePaidObj.createdAt,
+            };
+
             return Promise.all([
                 MySQL.DailyPrepaid.create(prePaidObj),
-                MySQL.PrePaidFlows.create(prePaidFlow)]).
+                MySQL.PrepaidFlows.create(prePaidFlow)]).
                 then(() => Message.BalanceChange(projectId, userId,
                     ret.amount,
                     ret.balance));
