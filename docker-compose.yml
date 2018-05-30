@@ -25,8 +25,8 @@ services:
         ports:
           - 8000:8000
         volumes:
-          - "/Users/louis.suo/repo/cloudenergy/zftapi:/src"
-          - "/Users/louis.suo/repo/cloudenergy/zftapi/node_modules:/src/node_modules"
+          - "../zftapi:/src"
+          - "../zftapi/node_modules:/src/node_modules"
         environment:
           - TZ=Asia/Shanghai
           - ZFT_AMAP_KEY

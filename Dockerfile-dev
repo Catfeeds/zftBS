@@ -15,6 +15,4 @@ ADD nodemon.json /src/nodemon.json
 ADD deploy/wait-for-it.sh /wait-for-it.sh
 RUN chmod a+x /wait-for-it.sh
 
-EXPOSE 8000
-
 CMD npm run dev
