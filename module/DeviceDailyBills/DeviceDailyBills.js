@@ -3,24 +3,20 @@ const bigdecimal = require('bigdecimal');
 const moment = require('moment');
 const schedule = require('node-schedule');
 const {formatMysqlDateTime} = Include('/libs/util');
-
+const innerValue = fp.map(j => j.toJSON());
 const generateProject = dailyTo => async projectId => {
     const dailyFrom = moment(dailyTo).startOf('days').unix();
     const paymentDay = moment(dailyTo).unix();
 
-    return allContracts(MySQL)(projectId, dailyFrom).then(
+    return allContracts(MySQL)(projectId, dailyFrom).then(innerValue).then(
         contracts => {
             if (!contracts.length) {
                 log.info(`no contracts in project ${projectId}`);
                 return;
             }
-            // console.log('contracts', fp.map(a => a.toJSON())(contracts));
+
             const houseIds = fp.uniq(fp.compact(
                 fp.map(fp.get('room.houseId'))(contracts)));
-            // const roomId2ContractId = fp.fromPairs(
-            //     fp.map(contract => [contract.roomId, contract.id])(contracts));
-            // const roomId2UserId = fp.fromPairs(fp.map(
-            //     c => [c.roomId, c.userId])(contracts));
 
             let houseId2Rooms = {};
             let deviceId2Room = {};
@@ -48,8 +44,6 @@ const generateProject = dailyTo => async projectId => {
 
             })(contracts);
 
-            // console.log('deviceId2Room', deviceId2Room);
-
             return Promise.all([
                 Util.getHouses(projectId, dailyTo, 'CLIENT', houseIds).
                     then(fp.map(a => a.toJSON())),
@@ -64,31 +58,48 @@ const generateProject = dailyTo => async projectId => {
                 ([houses, apportionments]) => {
                     const houseApportionment = houseIdRoomId2Share(
                         apportionments);
-                    // console.log('houseApportionment', apportionments, houseApportionment);
-                    // console.log('houses', fp.map(a => a.toJSON())(houses));
+
                     const deviceId2ElectricityPrice = devicesWithItsPrice(
                         houses);
                     const deviceIdDic = houseIdOfDevices(houses);
                     const deviceIds = allDeviceIds(houses);
+                    const roomId2Contract = fp.groupBy('roomId')(contracts);
+                    const contractedRooms = fp.flatten(
+                        fp.map(fp.pipe(fp.get('rooms'),
+                            fp.filter(fp.pipe(fp.get('id'),
+                                fp.includes(fp, fp.keys(roomId2Contract))))))(
+                            houses));
+                    const house2ContractedRoom = fp.groupBy('houseId')(
+                        contractedRooms);
 
-                    // console.log('heartbeatInProject: ', dailyFrom,
-                    //     dailyTo.unix(), projectId);
-                    return heartbeatInProject(MySQL)(dailyFrom, dailyTo.unix(),
+                    const house2Contract = fp.mapValues(
+                        fp.pipe(fp.map(contract => {
+                            const roomId = fp.get('id')(contract);
+                            return fp.get(roomId)(roomId2Contract);
+                        }), fp.flatten))(house2ContractedRoom);
+
+                    return heartbeatInProject(MySQL)(dailyFrom,
+                        dailyTo.unix(),
                         projectId).
                         then(billOnHeartbeats(MySQL)({
                             deviceIds,
-                            deviceId2Room, houseApportionment,
-                            deviceId2ElectricityPrice, deviceIdDic,
+                            deviceId2Room,
+                            houseApportionment,
+                            deviceId2ElectricityPrice,
+                            deviceIdDic,
                             houseId2Rooms,
-                            projectId, paymentDay,
+                            projectId,
+                            paymentDay,
+                            house2Contract,
                         }));
                 },
             );
         },
-    ).catch(err => {
-        log.error(
-            `error ${err} in calculating: ${projectId} at time ${dailyTo}`);
-    });
+    );
+    // .catch(err => {
+    //     log.error(
+    //         `error ${err} in calculating: project ${projectId} at time ${dailyTo}`);
+    // });
 };
 
 const generate = endTime =>
@@ -120,24 +131,25 @@ const payDevice = MySQL => async (devicePrePaid, room) => {
     const prePaidObj = fp.assign(devicePrePaid,
         {id: Util.newId(), flowId: flowId});
 
-    const prePaidFlow = {
-        id: flowId,
-        projectId,
-        contractId: devicePrePaid.contractId,
-        paymentDay: devicePrePaid.paymentDay,
-        category: 'device',
-    };
-
-    log.info('devicePrePaid: ', userId, prePaidObj,
-        prePaidFlow);
+    log.info('devicePrePaid: ', userId, prePaidObj);
 
     return Util.PayWithOwed(userId, prePaidObj.amount).then(
         ret => {
             if (ret.code !== ErrorCode.OK) {
-                log.error('PayWithOwed failed', userId,
+                log.error('PayWithOwed in device daily failed', userId,
                     prePaidObj, roomId, ret);
                 return;
             }
+
+            const prePaidFlow = {
+                id: flowId,
+                projectId,
+                contractId: devicePrePaid.contractId,
+                paymentDay: devicePrePaid.paymentDay,
+                amount: fp.getOr(0)('result.amount')(ret),
+                balance: fp.getOr(0)('result.balance')(ret),
+                category: 'device',
+            };
 
             return Promise.all([
                 MySQL.DevicePrepaid.create(prePaidObj),
@@ -149,9 +161,10 @@ const payDevice = MySQL => async (devicePrePaid, room) => {
     );
 };
 
-const searchRoomInHouse = device => roomId =>
-    fp.find(fp.pipe(fp.get('id'), a => a.toString(), fp.eq(roomId.toString())))(
-        device.rooms);
+const searchRoomInHouse = rooms => roomId =>
+    fp.find(
+        fp.pipe(fp.get('roomId'), a => a.toString(), fp.eq(roomId.toString())))(
+        rooms);
 const usageOf = cost => (cost.endScale - cost.startScale) * 10000;
 const scaleOf = cost => cost.endScale * 10000;
 const heartbeatInProject = MySQL => async (timeFrom, timeTo, projectId) => {
@@ -200,6 +213,7 @@ const allContracts = MySQL => async (
         {
             model: MySQL.Rooms,
             as: 'room',
+            required: true,
             include: [
                 {
                     model: MySQL.HouseDevices,
@@ -212,10 +226,10 @@ const allContracts = MySQL => async (
                             ],
                         },
                     },
-                    required: true,
+                    required: false,
                 },
             ],
-            required: true,
+
         },
     ],
 });
@@ -245,7 +259,8 @@ const amountOf = (base, price) => {
 const priceOfHouse = (houseDictionary, deviceId2ElectricityPrice) =>
     deviceId => {
         const house = houseDictionary(deviceId);
-        return fp.getOr(0)(house.id)(deviceId2ElectricityPrice);
+        console.log('house price of house', house);
+        return fp.getOr(0)(fp.get('id')(house))(deviceId2ElectricityPrice);
     };
 
 const houseIdRoomId2Share = apportionments =>
@@ -264,10 +279,12 @@ const houseIdOfDevices = houses => deviceId => fp.find(house => {
 
 const allDeviceIds = houses => fp.flatten(fp.map(house => {
     const publicDevices = fp.map(
-        fp.assign({public: true, rooms: house.rooms, houseId: house.id}))(
+        fp.defaults({public: true, houseId: house.id}))(
         house.devices);
-    return fp.flatten(
-        [publicDevices, fp.flatten(fp.map('devices')(house.rooms))]);
+    const devicesInRooms = fp.map(
+        room => fp.map(fp.defaults({public: false, houseId: room.houseId}))(
+            fp.get('devices')(room)))(house.rooms);
+    return fp.flatten([publicDevices, fp.flatten(devicesInRooms)]);
 })(houses));
 
 const devicesWithItsPrice = houses => {
@@ -283,6 +300,7 @@ const getAmountAndPrice = (deviceId2ElectricityPrice, deviceIdDic) => cost => {
     const price = priceOfHouse(
         deviceIdDic, deviceId2ElectricityPrice)(
         cost.deviceId);
+    console.log('price', price);
     return costOfRoom(price, cost);
 };
 const getApportionment = (houseApportionment, houseId2Rooms) => houseId => {
@@ -293,76 +311,76 @@ const getApportionment = (houseApportionment, houseId2Rooms) => houseId => {
             fp.map('id')(houseId2Rooms[houseId]));
 };
 
-const billOnHeartbeats = MySQL =>
-    dataMap => heartbeats => {
-        fp.each(costs => {
-            fp.each(singleDeviceProcess(MySQL)(dataMap))(costs);
-        })(devicesWithHeartbeats(dataMap.deviceIds,
-            heartbeats));
+const billOnHeartbeats = MySQL => dataMap => heartbeats => {
+    fp.each(fp.each(singleDeviceProcess(MySQL)(dataMap)))(
+        devicesWithHeartbeats(dataMap.deviceIds, heartbeats));
+};
+
+const singleDeviceProcess =
+    MySQL => ({
+                  deviceIds, deviceId2Room,
+                  houseApportionment,
+                  deviceId2ElectricityPrice,
+                  deviceIdDic, houseId2Rooms,
+                  projectId, paymentDay, house2Contract,
+              }) => reading => {
+
+        const device = fp.find(
+            fp.pipe(fp.get('deviceId'), fp.eq(reading.deviceId)))(
+            deviceIds);
+        const amountAndPrice = getAmountAndPrice(
+            deviceId2ElectricityPrice, deviceIdDic)(
+            reading);
+
+        if (device.public) {
+            const houseId = deviceIdDic(reading.deviceId).id;
+            //公区表
+            const apportionments = fp.toPairs(
+                getApportionment(houseApportionment, houseId2Rooms)(
+                    device.houseId));
+
+            const contractOfRoom = searchRoomInHouse(house2Contract[houseId]);
+            // console.log('device in public',
+            //     apportionments, device);
+            fp.each(([roomId, percent]) => {
+                const {id: contractId, userId} = contractOfRoom(roomId);
+                payDevice(MySQL)({
+                    type: 'ELECTRICITY',
+                    contractId,
+                    projectId,
+                    deviceId: reading.deviceId,
+                    amount: -calcShare(amountAndPrice, percent),
+                    scale: scaleOf(reading),
+                    usage: usageOf(reading),
+                    price: amountAndPrice.price,
+                    share: percent,
+                    paymentDay,
+                    createdAt: moment().unix(),
+                }, fp.defaults({userId, projectId})(device));
+            })(apportionments);
+        }
+
+        //私有表
+        const room = deviceId2Room[reading.deviceId];
+        return room && payDevice(MySQL)({
+            type: 'ELECTRICITY',
+            contractId: room.contractId,
+            projectId,
+            deviceId: reading.deviceId,
+            amount: -amountAndPrice.amount,
+            scale: scaleOf(reading),
+            usage: usageOf(reading),
+            price: amountAndPrice.price,
+            paymentDay,
+            createdAt: moment().unix(),
+        }, room);
 
     };
 
-const singleDeviceProcess = MySQL => ({
-    deviceIds, deviceId2Room, houseApportionment,
-    deviceId2ElectricityPrice, deviceIdDic, houseId2Rooms,
-    projectId, paymentDay,
-}) => cost => {
-    const amountAndPrice = getAmountAndPrice(
-        deviceId2ElectricityPrice, deviceIdDic)(
-        cost);
-    const room = deviceId2Room[cost.deviceId];
-    const device = fp.find(fp.pipe(fp.get('deviceId'), fp.eq(cost.deviceId)))(
-        deviceIds);
-
-    if (!room && device) {
-        //公区表
-        const apportionments = fp.toPairs(
-            getApportionment(houseApportionment, houseId2Rooms)(
-                device.houseId));
-
-        const roomOf = searchRoomInHouse(
-            device);
-        // console.log('device in public',
-        //     apportionments, device);
-        fp.each(([roomId, percent]) => {
-            payDevice(MySQL)({
-                type: 'ELECTRICITY',
-                contractId: roomOf(
-                    roomId).contractId,
-                projectId,
-                deviceId: cost.deviceId,
-                amount: -calcShare(
-                    amountAndPrice, percent),
-                scale: scaleOf(cost),
-                usage: usageOf(cost),
-                price: amountAndPrice.price,
-                share: percent,
-                paymentDay,
-                createdAt: moment().unix(),
-            }, device);
-        })(apportionments);
-    }
-
-    //私有表
-    return room && payDevice(MySQL)({
-        type: 'ELECTRICITY',
-        contractId: room.contractId,
-        projectId,
-        deviceId: cost.deviceId,
-        amount: -amountAndPrice.amount,
-        scale: scaleOf(cost),
-        usage: usageOf(cost),
-        price: amountAndPrice.price,
-        paymentDay,
-        createdAt: moment().unix(),
-    }, room);
-
-};
-
 exports.Run = () => {
     const rule = new schedule.RecurrenceRule();
-    rule.hour = 3;
-    rule.minute = 30;
+    rule.hour = 4;
+    rule.minute = 0;
     // rule.second = 5;
     schedule.scheduleJob(rule, async () => {
         console.log(

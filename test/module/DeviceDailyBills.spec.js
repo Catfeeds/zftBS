@@ -139,6 +139,8 @@ describe('DeviceDailyBills', function() {
                     id: 444222,
                     paymentDay: 2018,
                     projectId: 1,
+                    balance: -3329900,
+                    amount: -3330000,
                 });
             cashAccountUpdateSpy.getCall(0).args.should.be.eql([
                 {
@@ -273,6 +275,8 @@ describe('DeviceDailyBills', function() {
                     id: 444222,
                     paymentDay: 2018,
                     projectId: 1,
+                    balance: -39860,
+                    amount: -39960,
                 });
             prePaidFlowsCreateSpy.getCall(1).args[0].should.be.eql(
                 {
@@ -281,6 +285,8 @@ describe('DeviceDailyBills', function() {
                     id: 444222,
                     paymentDay: 2018,
                     projectId: 1,
+                    balance: -430.4,
+                    amount: -530.4,
                 });
         });
     });
@@ -380,6 +386,8 @@ describe('DeviceDailyBills', function() {
                     id: 444222,
                     paymentDay: 2018,
                     projectId: 1,
+                    amount: -0,
+                    balance: 100,
                 });
         });
     });
@@ -472,6 +480,8 @@ describe('DeviceDailyBills', function() {
                     id: 444222,
                     paymentDay: 2018,
                     projectId: 1,
+                    amount: -0,
+                    balance: 100,
                 });
         });
     });

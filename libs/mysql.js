@@ -955,8 +955,6 @@ function SequelizeDefine()
         },
         share: {
             type: Sequelize.INTEGER,
-            allowNull: false,
-            defaultValue: 100
         },
         usage: {
             type: Sequelize.BIGINT,

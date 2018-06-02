@@ -432,7 +432,7 @@ create table if not exists `devicePrePaid`
   `usage` bigint(20) NOT NULL,
 	`price` int(11) NOT NULL,
 	`paymentDay` bigint(20) UNSIGNED NOT NULL,
-  `share` int(11) NOT NULL DEFAULT 100,
+  `share` int(11),
   `createdAt` bigint(20) UNSIGNED NOT NULL,
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB;

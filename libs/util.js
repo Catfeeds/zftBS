@@ -118,7 +118,7 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
                     {
                         model: MySQL.HouseDevices,
                         as: 'devices',
-                        required: true
+                        required: false,
                     }
                 ]
             }

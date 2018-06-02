@@ -43,7 +43,7 @@ const prepaidRecord = (projectId, paymentDay) => async prepaidObject => {
     return Util.PayWithOwed(userId, prePaidObj.amount).then(
         ret => {
             if (ret.code !== ErrorCode.OK) {
-                log.console('PayWithOwed failed', userId,
+                log.error('PayWithOwed in daily prepaid failed', userId,
                     prePaidObj, roomId, ret);
                 return;
             }
@@ -91,8 +91,8 @@ exports.deduct = endTime => MySQL.Projects.findAll({attributes: ['id']}).
 
 exports.Run = () => {
     const rule = new schedule.RecurrenceRule();
-    rule.hour = 3;
-    rule.minute = 30;
+    rule.hour = 8;
+    rule.minute = 0;
     // rule.second = 5;
     schedule.scheduleJob(rule, async () => {
         console.log(
