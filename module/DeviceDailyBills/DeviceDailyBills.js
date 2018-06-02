@@ -58,49 +58,48 @@ const generateProject = dailyTo => async projectId => {
                     },
                 }),
             ]).then(([houses, apportionments]) => {
-                    const houseApportionment = houseIdRoomId2Share(
-                        apportionments);
+                const houseApportionment = houseIdRoomId2Share(
+                    apportionments);
 
-                    const deviceId2ElectricityPrice = devicesWithItsPrice(
-                        houses);
-                    const deviceIdDic = houseIdOfDevices(houses);
-                    const deviceIds = allDeviceIds(houses);
-                    const roomId2Contract = fp.groupBy('roomId')(contracts);
-                    const contractedRooms = fp.flatten(
-                        fp.map(fp.pipe(fp.get('rooms'),
-                            fp.filter(fp.pipe(fp.get('id'),
-                                x => fp.includes(x.toString())(
-                                    fp.keys(roomId2Contract))))))(
-                            houses));
-                    const house2ContractedRoom = fp.groupBy('houseId')(
-                        contractedRooms);
+                const deviceId2ElectricityPrice = devicesWithItsPrice(
+                    houses);
+                const deviceIdDic = houseIdOfDevices(houses);
+                const deviceIds = allDeviceIds(houses);
+                const roomId2Contract = fp.groupBy('roomId')(contracts);
+                const contractedRooms = fp.flatten(
+                    fp.map(fp.pipe(fp.get('rooms'),
+                        fp.filter(fp.pipe(fp.get('id'),
+                            x => fp.includes(x.toString())(
+                                fp.keys(roomId2Contract))))))(
+                        houses));
+                const house2ContractedRoom = fp.groupBy('houseId')(
+                    contractedRooms);
 
-                    const house2Contract = fp.mapValues(
-                        fp.flatMap(contract => fp.get(fp.get('id')(contract))(
-                            roomId2Contract)))(house2ContractedRoom);
+                const house2Contract = fp.mapValues(
+                    fp.flatMap(contract => fp.get(fp.get('id')(contract))(
+                        roomId2Contract)))(house2ContractedRoom);
 
-                    return heartbeatInProject(MySQL)(dailyFrom,
-                        dailyTo.unix(),
-                        projectId).
-                        then(billOnHeartbeats(MySQL)({
-                            deviceIds,
-                            deviceId2Room,
-                            houseApportionment,
-                            deviceId2ElectricityPrice,
-                            deviceIdDic,
-                            houseId2Rooms,
-                            projectId,
-                            paymentDay,
-                            house2Contract,
-                        }));
-                },
+                return heartbeatInProject(MySQL)(dailyFrom,
+                    dailyTo.unix(),
+                    projectId).
+                    then(billOnHeartbeats(MySQL)({
+                        deviceIds,
+                        deviceId2Room,
+                        houseApportionment,
+                        deviceId2ElectricityPrice,
+                        deviceIdDic,
+                        houseId2Rooms,
+                        projectId,
+                        paymentDay,
+                        house2Contract,
+                    }));
+            },
             );
         },
-    );
-    // .catch(err => {
-    //     log.error(
-    //         `error ${err} in calculating: project ${projectId} at time ${dailyTo}`);
-    // });
+    ).catch(err => {
+        log.error(
+            `error ${err} in calculating: project ${projectId} at time ${dailyTo}`);
+    });
 };
 
 const generate = endTime =>
@@ -317,12 +316,12 @@ const billOnHeartbeats = MySQL => dataMap => heartbeats => {
 
 const singleDeviceProcess = MySQL =>
     ({
-         deviceIds, deviceId2Room,
-         houseApportionment,
-         deviceId2ElectricityPrice,
-         deviceIdDic, houseId2Rooms,
-         projectId, paymentDay, house2Contract,
-     }) => reading => {
+        deviceIds, deviceId2Room,
+        houseApportionment,
+        deviceId2ElectricityPrice,
+        deviceIdDic, houseId2Rooms,
+        projectId, paymentDay, house2Contract,
+    }) => reading => {
 
         const device = fp.find(
             fp.pipe(fp.get('deviceId'), fp.eq(reading.deviceId)))(
