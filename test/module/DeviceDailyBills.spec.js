@@ -47,6 +47,7 @@ describe('DeviceDailyBills', function() {
         const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -85,19 +86,21 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     }],
             },
             CashAccount: {
@@ -110,7 +113,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -158,6 +160,7 @@ describe('DeviceDailyBills', function() {
         const devicePrePaidCreateSpy = spy();
         const prePaidFlowsCreateSpy = spy();
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -205,21 +208,23 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                }, {
-                                    deviceId: 4445,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    }, {
+                                        deviceId: 4445,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     }],
             },
             CashAccount: {
@@ -232,7 +237,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -295,6 +299,7 @@ describe('DeviceDailyBills', function() {
         const prePaidFlowsCreateSpy = spy();
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -333,19 +338,21 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     }],
             },
             CashAccount: {
@@ -358,7 +365,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -396,6 +402,7 @@ describe('DeviceDailyBills', function() {
         const prePaidFlowsCreateSpy = spy();
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -427,19 +434,21 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     }],
             },
             CashAccount: {
@@ -452,7 +461,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -491,6 +499,7 @@ describe('DeviceDailyBills', function() {
         const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -515,6 +524,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 443,
                                     userId: 33221,
+                                    houseId: 1,
                                 },
                                 {
                                     id: 3323,
@@ -525,6 +535,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 1443,
                                     userId: 33222,
+                                    houseId: 1,
                                 }],
                         }),
                     }],
@@ -554,34 +565,39 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     },
                     {
-                        id: 1443,
-                        roomId: 3323,
-                        room: {
-                            id: 3323,
+                        toJSON: () => ({
+                            id: 1443,
+                            roomId: 3323,
+                            room: {
+                                id: 3323,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4445,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33222,
                             houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4445,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33222,
+                        }),
                     }],
             },
             CashAccount: {
@@ -594,7 +610,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -671,6 +686,7 @@ describe('DeviceDailyBills', function() {
         const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -695,6 +711,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 443,
                                     userId: 33221,
+                                    houseId: 1,
                                 },
                                 {
                                     id: 3323,
@@ -705,6 +722,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 1443,
                                     userId: 33222,
+                                    houseId: 1,
                                 }],
                         }),
                     }],
@@ -734,36 +752,40 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                }, {
-                                    deviceId: 4445,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    }, {
+                                        deviceId: 4445,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     },
                     {
-                        id: 1443,
-                        roomId: 3323,
-                        room: {
-                            id: 3323,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4445,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33222,
+                        toJSON: () => ({
+                            id: 1443,
+                            roomId: 3323,
+                            room: {
+                                id: 3323,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4445,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33222,
+                        }),
                     }],
             },
             CashAccount: {
@@ -776,7 +798,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
             HouseApportionment: {
                 findAll: async () => [
                     {
@@ -869,6 +890,7 @@ describe('DeviceDailyBills', function() {
         const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
         global.MySQL = {
+            ...fixedMock,
             Houses: {
                 findAll: async () => [
                     {
@@ -893,6 +915,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 443,
                                     userId: 33221,
+                                    houseId: 1,
                                 },
                                 {
                                     id: 3323,
@@ -903,6 +926,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 1443,
                                     userId: 33222,
+                                    houseId: 1,
                                 },
                                 {
                                     id: 3324,
@@ -913,6 +937,7 @@ describe('DeviceDailyBills', function() {
                                     ],
                                     contractId: 2443,
                                     userId: 33223,
+                                    houseId: 1,
                                 }],
                         }),
                     }],
@@ -948,47 +973,53 @@ describe('DeviceDailyBills', function() {
             Contracts: {
                 findAll: async () => [
                     {
-                        id: 443,
-                        roomId: 3322,
-                        room: {
-                            id: 3322,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4444,
-                                }
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33221,
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            room: {
+                                id: 3322,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4444,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33221,
+                        }),
                     }, {
-                        id: 1443,
-                        roomId: 3323,
-                        room: {
-                            id: 3323,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4445,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33222,
+                        toJSON: () => ({
+                            id: 1443,
+                            roomId: 3323,
+                            room: {
+                                id: 3323,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4445,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33222,
+                        }),
                     }, {
-                        id: 2443,
-                        roomId: 3324,
-                        room: {
-                            id: 3324,
-                            houseId: 1,
-                            devices: [
-                                {
-                                    deviceId: 4446,
-                                },
-                            ],
-                        },
-                        expenses: [],
-                        userId: 33223,
+                        toJSON: () => ({
+                            id: 2443,
+                            roomId: 3324,
+                            room: {
+                                id: 3324,
+                                houseId: 1,
+                                devices: [
+                                    {
+                                        deviceId: 4446,
+                                    },
+                                ],
+                            },
+                            expenses: [],
+                            userId: 33223,
+                        }),
                     }],
             },
             CashAccount: {
@@ -1001,7 +1032,6 @@ describe('DeviceDailyBills', function() {
             PrepaidFlows: {
                 create: prePaidFlowsCreateSpy,
             },
-            ...fixedMock,
         };
 
         await bill(moment()).then(() => {
@@ -1101,7 +1131,6 @@ describe('DeviceDailyBills', function() {
                     usage: 0,
                 });
         });
-
 
     });
     it('should handle pay exception', async () => {

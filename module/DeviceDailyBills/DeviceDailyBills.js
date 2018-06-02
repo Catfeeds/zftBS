@@ -1,9 +1,12 @@
+'use strict';
 const fp = require('lodash/fp');
 const bigdecimal = require('bigdecimal');
 const moment = require('moment');
 const schedule = require('node-schedule');
 const {formatMysqlDateTime} = Include('/libs/util');
+
 const innerValue = fp.map(j => j.toJSON());
+
 const generateProject = dailyTo => async projectId => {
     const dailyFrom = moment(dailyTo).startOf('days').unix();
     const paymentDay = moment(dailyTo).unix();
@@ -54,8 +57,7 @@ const generateProject = dailyTo => async projectId => {
                         houseId: {$in: houseIds},
                     },
                 }),
-            ]).then(
-                ([houses, apportionments]) => {
+            ]).then(([houses, apportionments]) => {
                     const houseApportionment = houseIdRoomId2Share(
                         apportionments);
 
@@ -67,16 +69,15 @@ const generateProject = dailyTo => async projectId => {
                     const contractedRooms = fp.flatten(
                         fp.map(fp.pipe(fp.get('rooms'),
                             fp.filter(fp.pipe(fp.get('id'),
-                                fp.includes(fp, fp.keys(roomId2Contract))))))(
+                                x => fp.includes(x.toString())(
+                                    fp.keys(roomId2Contract))))))(
                             houses));
                     const house2ContractedRoom = fp.groupBy('houseId')(
                         contractedRooms);
 
                     const house2Contract = fp.mapValues(
-                        fp.pipe(fp.map(contract => {
-                            const roomId = fp.get('id')(contract);
-                            return fp.get(roomId)(roomId2Contract);
-                        }), fp.flatten))(house2ContractedRoom);
+                        fp.flatMap(contract => fp.get(fp.get('id')(contract))(
+                            roomId2Contract)))(house2ContractedRoom);
 
                     return heartbeatInProject(MySQL)(dailyFrom,
                         dailyTo.unix(),
@@ -259,7 +260,6 @@ const amountOf = (base, price) => {
 const priceOfHouse = (houseDictionary, deviceId2ElectricityPrice) =>
     deviceId => {
         const house = houseDictionary(deviceId);
-        console.log('house price of house', house);
         return fp.getOr(0)(fp.get('id')(house))(deviceId2ElectricityPrice);
     };
 
@@ -300,7 +300,6 @@ const getAmountAndPrice = (deviceId2ElectricityPrice, deviceIdDic) => cost => {
     const price = priceOfHouse(
         deviceIdDic, deviceId2ElectricityPrice)(
         cost.deviceId);
-    console.log('price', price);
     return costOfRoom(price, cost);
 };
 const getApportionment = (houseApportionment, houseId2Rooms) => houseId => {
@@ -316,14 +315,14 @@ const billOnHeartbeats = MySQL => dataMap => heartbeats => {
         devicesWithHeartbeats(dataMap.deviceIds, heartbeats));
 };
 
-const singleDeviceProcess =
-    MySQL => ({
-                  deviceIds, deviceId2Room,
-                  houseApportionment,
-                  deviceId2ElectricityPrice,
-                  deviceIdDic, houseId2Rooms,
-                  projectId, paymentDay, house2Contract,
-              }) => reading => {
+const singleDeviceProcess = MySQL =>
+    ({
+         deviceIds, deviceId2Room,
+         houseApportionment,
+         deviceId2ElectricityPrice,
+         deviceIdDic, houseId2Rooms,
+         projectId, paymentDay, house2Contract,
+     }) => reading => {
 
         const device = fp.find(
             fp.pipe(fp.get('deviceId'), fp.eq(reading.deviceId)))(
@@ -340,8 +339,7 @@ const singleDeviceProcess =
                     device.houseId));
 
             const contractOfRoom = searchRoomInHouse(house2Contract[houseId]);
-            // console.log('device in public',
-            //     apportionments, device);
+            
             fp.each(([roomId, percent]) => {
                 const {id: contractId, userId} = contractOfRoom(roomId);
                 payDevice(MySQL)({
