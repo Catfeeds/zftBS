@@ -4,7 +4,8 @@ const schedule = require('node-schedule');
 
 const innerValue = j => j.toJSON();
 const extractPrepaid = contract => {
-    const filtered = fp.filter(fp.pipe(fp.get('pattern'), fp.eq('prepaid')))(
+    const filtered = fp.filter(
+        expense => expense.configId !== 1041 && expense.pattern === 'prepaid')(
         contract.expenses);
     return fp.map(fp.defaults(fp.pick(['userId', 'id'])(contract)))(filtered);
 };

@@ -112,4 +112,45 @@ describe('DailyPrepaid', function() {
                 }]);
         });
     });
+    it('should ignore electricity prepaid, configId 1041', async () => {
+        const dailyPrepaidCreateSpy = spy();
+        const prePaidFlowsCreateSpy = spy();
+        const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
+
+        global.MySQL = {
+            Contracts: {
+                findAll: async () => [
+                    {
+                        toJSON: () => ({
+                            id: 443,
+                            roomId: 3322,
+                            expenses: [
+                                {
+                                    configId: 1041,
+                                    pattern: 'prepaid',
+                                    rent: 99,
+                                }],
+                            userId: 33221,
+                        }),
+                    }],
+            },
+            CashAccount: {
+                findOne: async () => ({id: 123, balance: 100, locker: 1}),
+                update: cashAccountUpdateSpy,
+            },
+            DailyPrepaid: {
+                create: dailyPrepaidCreateSpy,
+            },
+            PrepaidFlows: {
+                create: prePaidFlowsCreateSpy,
+            },
+            ...fixedMock,
+        };
+
+        await deduct(moment()).then(() => {
+            dailyPrepaidCreateSpy.should.not.have.been.called;
+            prePaidFlowsCreateSpy.should.not.have.been.called;
+            cashAccountUpdateSpy.should.not.have.been.called;
+        });
+    });
 });

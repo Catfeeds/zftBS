@@ -425,6 +425,7 @@ create table if not exists `devicePrePaid`
 	`flowId` bigint(20) UNSIGNED NOT NULL,
   `contractId` bigint(20) UNSIGNED NOT NULL,
   `projectId` bigint(20) UNSIGNED NOT NULL,
+  `configId` bigint(20) UNSIGNED NOT NULL DEFAULT 1041,
   `deviceId` varchar(32) NOT NULL,
   `amount` int(11) NOT NULL DEFAULT 0,
   `scale` bigint(20) NOT NULL,
@@ -577,6 +578,8 @@ create table if not exists `prePaidFlows`
 	`projectId` bigint(20) UNSIGNED NOT NULL,
 	`contractId` bigint(20) NOT NULL,
 	`category` varchar(8) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+	`balance` int(11) NOT NULL DEFAULT 0,
+	`amount` int(11) NOT NULL DEFAULT 0,
 	`paymentDay` bigint(20) NOT NULL,
 	`createdAt` datetime(0) NULL,
 	`updatedAt` datetime(0) NULL,
@@ -592,18 +595,15 @@ VALUES (1, 100, 'admin100', '5f4dcc3b5aa765d61d8327deb882cf99',  NOW(),  NOW()),
 INSERT INTO zft.bindings (authId, platform, deviceId, createdAt, updatedAt)
     VALUES (1, 'ios', '3227dcbae04c4f3ba5034d86a57c30e0', NOW(), NOW());
 
-INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`)
-VALUES ('receive', '100', 'manual', '现金', 'PASSED ', NOW(), NOW(), NULL),
- ('receive', '100', 'alipay', '支付宝', 'PASSED ', NOW(), NOW(), NULL);
-
 INSERT INTO `zft`.`receiveChannels` (`fundChannelId`, `fee`, `share`, `setting`, `createdAt`, `updatedAt`, `deletedAt`)
-VALUES ( '1', '0', NULL, NULL, NOW(), NOW(), NULL);
-INSERT INTO `zft`.`receiveChannels` (`fundChannelId`, `fee`, `share`, `setting`, `createdAt`, `updatedAt`, `deletedAt`)
-VALUES ( '2', '6', NULL, NULL, NOW(), NOW(), NULL);
+VALUES ( '1', '0', NULL, NULL, NOW(), NOW(), NULL),
+ ( '2', '6', NULL, NULL, NOW(), NOW(), NULL),
+ ( '3', '3', NULL, NULL, NOW(), NOW(), NULL);
 
-INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `category`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`) VALUES ('receive', '100', 'offline', 'cash', '现金', 'PASSED ', '2018-01-03 22:23:01', '2018-01-03 22:23:03', NULL);
-INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `category`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`) VALUES ('receive', '100', 'online', 'alipay', '支付宝', 'PASSED ', '2018-01-03 22:31:59', '2018-01-03 22:32:02', NULL);
-INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `category`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`) VALUES ('pay', '100', 'online', 'icbc', '工商银行', 'PASSED', '2018-01-03 22:33:12', '2018-01-03 22:33:15', NULL);
+INSERT INTO `zft`.`fundChannels` (`flow`, `projectId`, `category`, `tag`, `name`, `status`, `createdAt`, `updatedAt`, `deletedAt`) VALUES
+('receive', '100', 'offline', 'cash', '现金', 'PASSED ', '2018-01-03 22:23:01', '2018-01-03 22:23:03', NULL),
+('receive', '100', 'online', 'alipay', '支付宝', 'PASSED ', '2018-01-03 22:31:59', '2018-01-03 22:32:02', NULL),
+('pay', '100', 'online', 'icbc', '工商银行', 'PASSED', '2018-01-03 22:33:12', '2018-01-03 22:33:15', NULL);
 
 INSERT INTO zft.serviceCharge (id, projectId, fundChannelId, type, strategy, createdAt, updatedAt, deletedAt) VALUES (1, 100, 1, 'TOPUP', '{"user":40,"project":60,"fee":10}', '2018-01-24 17:59:13', '2018-01-25 08:12:08', null);
 INSERT INTO zft.serviceCharge (id, projectId, fundChannelId, type, strategy, createdAt, updatedAt, deletedAt) VALUES (2, 100, 1, 'BILL', '{"user":30,"project":70,"fee":10}', '2018-01-24 17:59:13', '2018-01-25 08:12:08', null);
