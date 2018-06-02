@@ -489,169 +489,170 @@ describe('DeviceDailyBills', function() {
                 });
         });
     });
-    it('should not ignore sharing bills if no heartbeats for public meter at all', async () => {
-        const devicePrePaidCreateSpy = spy();
-        const prePaidFlowsCreateSpy = spy();
-        const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
+    it('should not ignore sharing bills if no heartbeats for public meter at all',
+        async () => {
+            const devicePrePaidCreateSpy = spy();
+            const prePaidFlowsCreateSpy = spy();
+            const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
 
-        global.MySQL = {
-            ...fixedMock,
-            Houses: {
-                findAll: async () => [
-                    {
-                        toJSON: () => ({
-                            id: 1,
-                            devices: [
-                                {
-                                    deviceId: 1119,
-                                }],
-                            prices: [
-                                {
-                                    type: 'ELECTRIC',
-                                    price: 1000,
-                                }],
-                            rooms: [
-                                {
+            global.MySQL = {
+                ...fixedMock,
+                Houses: {
+                    findAll: async () => [
+                        {
+                            toJSON: () => ({
+                                id: 1,
+                                devices: [
+                                    {
+                                        deviceId: 1119,
+                                    }],
+                                prices: [
+                                    {
+                                        type: 'ELECTRIC',
+                                        price: 1000,
+                                    }],
+                                rooms: [
+                                    {
+                                        id: 3322,
+                                        devices: [
+                                            {
+                                                deviceId: 4444,
+                                            },
+                                        ],
+                                        houseId: 1,
+                                    },
+                                    {
+                                        id: 3323,
+                                        devices: [
+                                            {
+                                                deviceId: 4445,
+                                            },
+                                        ],
+                                        houseId: 1,
+                                    }],
+                            }),
+                        }],
+                },
+                DeviceHeartbeats: {
+                    findAll: async () => [],
+                },
+                Contracts: {
+                    findAll: async () => [
+                        {
+                            toJSON: () => ({
+                                id: 443,
+                                roomId: 3322,
+                                room: {
                                     id: 3322,
+                                    houseId: 1,
                                     devices: [
                                         {
                                             deviceId: 4444,
                                         },
                                     ],
-                                    houseId: 1,
                                 },
-                                {
+                                expenses: [],
+                                userId: 33221,
+                            }),
+                        },
+                        {
+                            toJSON: () => ({
+                                id: 1443,
+                                roomId: 3323,
+                                room: {
                                     id: 3323,
+                                    houseId: 1,
                                     devices: [
                                         {
                                             deviceId: 4445,
                                         },
                                     ],
-                                    houseId: 1,
-                                }],
-                        }),
-                    }],
-            },
-            DeviceHeartbeats: {
-                findAll: async () => [],
-            },
-            Contracts: {
-                findAll: async () => [
-                    {
-                        toJSON: () => ({
-                            id: 443,
-                            roomId: 3322,
-                            room: {
-                                id: 3322,
+                                },
+                                expenses: [],
+                                userId: 33222,
                                 houseId: 1,
-                                devices: [
-                                    {
-                                        deviceId: 4444,
-                                    },
-                                ],
-                            },
-                            expenses: [],
-                            userId: 33221,
-                        }),
-                    },
-                    {
-                        toJSON: () => ({
-                            id: 1443,
-                            roomId: 3323,
-                            room: {
-                                id: 3323,
-                                houseId: 1,
-                                devices: [
-                                    {
-                                        deviceId: 4445,
-                                    },
-                                ],
-                            },
-                            expenses: [],
-                            userId: 33222,
-                            houseId: 1,
-                        }),
-                    }],
-            },
-            CashAccount: {
-                findOne: async () => ({id: 123, balance: 100}),
-                update: cashAccountUpdateSpy,
-            },
-            DevicePrepaid: {
-                create: devicePrePaidCreateSpy,
-            },
-            PrepaidFlows: {
-                create: prePaidFlowsCreateSpy,
-            },
-        };
+                            }),
+                        }],
+                },
+                CashAccount: {
+                    findOne: async () => ({id: 123, balance: 100}),
+                    update: cashAccountUpdateSpy,
+                },
+                DevicePrepaid: {
+                    create: devicePrePaidCreateSpy,
+                },
+                PrepaidFlows: {
+                    create: prePaidFlowsCreateSpy,
+                },
+            };
 
-        await bill(moment()).then(() => {
-            devicePrePaidCreateSpy.should.have.been.called;
-            prePaidFlowsCreateSpy.should.have.been.called;
-            devicePrePaidCreateSpy.getCall(0).args[0].should.be.eql(
-                {
-                    amount: -0,
-                    contractId: 443,
-                    createdAt: 2018,
-                    deviceId: 1119,
-                    flowId: 444222,
-                    id: 444222,
-                    paymentDay: 2018,
-                    price: 1000,
-                    projectId: 1,
-                    scale: 0,
-                    share: 50,
-                    type: 'ELECTRICITY',
-                    usage: 0,
-                });
-            devicePrePaidCreateSpy.getCall(1).args[0].should.be.eql(
-                {
-                    amount: -0,
-                    contractId: 1443,
-                    createdAt: 2018,
-                    deviceId: 1119,
-                    flowId: 444222,
-                    id: 444222,
-                    paymentDay: 2018,
-                    price: 1000,
-                    projectId: 1,
-                    scale: 0,
-                    share: 50,
-                    type: 'ELECTRICITY',
-                    usage: 0,
-                });
-            devicePrePaidCreateSpy.getCall(2).args[0].should.be.eql(
-                {
-                    amount: -0,
-                    contractId: 443,
-                    createdAt: 2018,
-                    deviceId: 4444,
-                    flowId: 444222,
-                    id: 444222,
-                    paymentDay: 2018,
-                    price: 1000,
-                    projectId: 1,
-                    scale: 0,
-                    type: 'ELECTRICITY',
-                    usage: 0,
-                });
-            devicePrePaidCreateSpy.getCall(3).args[0].should.be.eql(
-                {
-                    amount: -0,
-                    contractId: 1443,
-                    createdAt: 2018,
-                    deviceId: 4445,
-                    flowId: 444222,
-                    id: 444222,
-                    paymentDay: 2018,
-                    price: 1000,
-                    projectId: 1,
-                    scale: 0,
-                    type: 'ELECTRICITY',
-                    usage: 0,
-                });
+            await bill(moment()).then(() => {
+                devicePrePaidCreateSpy.should.have.been.called;
+                prePaidFlowsCreateSpy.should.have.been.called;
+                devicePrePaidCreateSpy.getCall(0).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 443,
+                        createdAt: 2018,
+                        deviceId: 1119,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 0,
+                        share: 50,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+                devicePrePaidCreateSpy.getCall(1).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 1443,
+                        createdAt: 2018,
+                        deviceId: 1119,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 0,
+                        share: 50,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+                devicePrePaidCreateSpy.getCall(2).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 443,
+                        createdAt: 2018,
+                        deviceId: 4444,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 0,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+                devicePrePaidCreateSpy.getCall(3).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 1443,
+                        createdAt: 2018,
+                        deviceId: 4445,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 0,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+            });
         });
-    });
     it('should share public meter', async () => {
         const devicePrePaidCreateSpy = spy();
         const prePaidFlowsCreateSpy = spy();
@@ -1456,7 +1457,228 @@ describe('DeviceDailyBills', function() {
         });
 
     });
-    it('should share with contracted room which even has no device', async () => {
+    it('should share with contracted room which even has no device',
+        async () => {
+            const devicePrePaidCreateSpy = spy();
+            const prePaidFlowsCreateSpy = spy();
+            const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
+
+            global.MySQL = {
+                ...fixedMock,
+                Houses: {
+                    findAll: async () => [
+                        {
+                            toJSON: () => ({
+                                id: 1,
+                                devices: [
+                                    {
+                                        deviceId: 1119,
+                                    }],
+                                prices: [
+                                    {
+                                        type: 'ELECTRIC',
+                                        price: 1000,
+                                    }],
+                                rooms: [
+                                    {
+                                        id: 3322,
+                                        devices: [
+                                            {
+                                                deviceId: 4444,
+                                            },
+                                        ],
+                                        houseId: 1,
+                                    },
+                                    {
+                                        id: 3323,
+                                        devices: [
+                                            {
+                                                deviceId: 4445,
+                                            },
+                                        ],
+                                        houseId: 1,
+                                    },
+                                    {
+                                        id: 3324,
+                                        houseId: 1,
+                                    }],
+                            }),
+                        }],
+                },
+                DeviceHeartbeats: {
+                    findAll: async () => [
+                        {
+                            toJSON: () => ({
+                                deviceId: 4444,
+                                startScale: 0,
+                                endScale: 0,
+                            }),
+                        }, {
+                            toJSON: () => ({
+                                deviceId: 4445,
+                                startScale: 100,
+                                endScale: 100,
+                            }),
+                        }, {
+                            toJSON: () => ({
+                                deviceId: 1119,
+                                startScale: 0,
+                                endScale: 10,
+                            }),
+                        }, {
+                            toJSON: () => ({
+                                deviceId: 4446,
+                                startScale: 200,
+                                endScale: 200,
+                            }),
+                        }],
+                },
+                Contracts: {
+                    findAll: async () => [
+                        {
+                            toJSON: () => ({
+                                id: 443,
+                                roomId: 3322,
+                                room: {
+                                    id: 3322,
+                                    houseId: 1,
+                                    devices: [
+                                        {
+                                            deviceId: 4444,
+                                        },
+                                    ],
+                                },
+                                expenses: [],
+                                userId: 33221,
+                            }),
+                        }, {
+                            toJSON: () => ({
+                                id: 1443,
+                                roomId: 3323,
+                                room: {
+                                    id: 3323,
+                                    houseId: 1,
+                                    devices: [
+                                        {
+                                            deviceId: 4445,
+                                        },
+                                    ],
+                                },
+                                expenses: [],
+                                userId: 33222,
+                            }),
+                        }, {
+                            toJSON: () => ({
+                                id: 2443,
+                                roomId: 3324,
+                                room: {
+                                    id: 3324,
+                                    houseId: 1,
+                                    devices: [],
+                                },
+                                expenses: [],
+                                userId: 33223,
+                            }),
+                        }],
+                },
+                CashAccount: {
+                    findOne: async () => ({id: 123, balance: 100}),
+                    update: cashAccountUpdateSpy,
+                },
+                DevicePrepaid: {
+                    create: devicePrePaidCreateSpy,
+                },
+                PrepaidFlows: {
+                    create: prePaidFlowsCreateSpy,
+                },
+            };
+
+            await bill(moment()).then(() => {
+                devicePrePaidCreateSpy.should.have.been.called;
+                prePaidFlowsCreateSpy.should.have.been.called;
+                devicePrePaidCreateSpy.getCall(0).args[0].should.be.eql(
+                    {
+                        amount: -3400,
+                        contractId: 443,
+                        createdAt: 2018,
+                        deviceId: 1119,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 100000,
+                        share: 34,
+                        type: 'ELECTRICITY',
+                        usage: 100000,
+                    });
+                devicePrePaidCreateSpy.getCall(1).args[0].should.be.eql(
+                    {
+                        amount: -3300,
+                        contractId: 1443,
+                        createdAt: 2018,
+                        deviceId: 1119,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 100000,
+                        share: 33,
+                        type: 'ELECTRICITY',
+                        usage: 100000,
+                    });
+                devicePrePaidCreateSpy.getCall(2).args[0].should.be.eql(
+                    {
+                        amount: -3300,
+                        contractId: 2443,
+                        createdAt: 2018,
+                        deviceId: 1119,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 100000,
+                        share: 33,
+                        type: 'ELECTRICITY',
+                        usage: 100000,
+                    });
+                devicePrePaidCreateSpy.getCall(3).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 443,
+                        createdAt: 2018,
+                        deviceId: 4444,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 0,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+                devicePrePaidCreateSpy.getCall(4).args[0].should.be.eql(
+                    {
+                        amount: -0,
+                        contractId: 1443,
+                        createdAt: 2018,
+                        deviceId: 4445,
+                        flowId: 444222,
+                        id: 444222,
+                        paymentDay: 2018,
+                        price: 1000,
+                        projectId: 1,
+                        scale: 1000000,
+                        type: 'ELECTRICITY',
+                        usage: 0,
+                    });
+            });
+
+        });
+
+    it('should handle real data', async () => {
         const devicePrePaidCreateSpy = spy();
         const prePaidFlowsCreateSpy = spy();
         const cashAccountUpdateSpy = stub().resolves([{id: 123}]);
@@ -1467,116 +1689,535 @@ describe('DeviceDailyBills', function() {
                 findAll: async () => [
                     {
                         toJSON: () => ({
-                            id: 1,
-                            devices: [
+                            'config': null,
+                            'id': '6403211810681524224',
+                            'houseFormat': 'SHARE',
+                            'projectId': '6376305154160988160',
+                            'buildingId': '6403211810668941312',
+                            'code': '20180518',
+                            'layoutId': 0,
+                            'roomNumber': '3',
+                            'currentFloor': 3,
+                            'houseKeeper': 15,
+                            'desc': '',
+                            'status': 'OPEN',
+                            'createdAt': 1526644661,
+                            'deleteAt': 0,
+                            'BuildingId': '6403211810668941312',
+                            'prices': [
                                 {
-                                    deviceId: 1119,
-                                }],
-                            prices: [
-                                {
-                                    type: 'ELECTRIC',
-                                    price: 1000,
-                                }],
-                            rooms: [
-                                {
-                                    id: 3322,
-                                    devices: [
-                                        {
-                                            deviceId: 4444,
-                                        },
-                                    ],
-                                    houseId: 1,
+                                    'houseId': '6403211810681524224',
+                                    'category': 'CLIENT',
+                                    'type': 'ELECTRIC',
+                                    'price': 120,
                                 },
                                 {
-                                    id: 3323,
-                                    devices: [
+                                    'houseId': '6403211810681524224',
+                                    'category': 'CLIENT',
+                                    'type': 'ELECTRIC',
+                                    'price': 100000,
+                                },
+                            ],
+                            'devices': [
+                                {
+                                    'deviceId': 'YTL043000101519',
+                                    'startDate': 1526645811,
+                                    'endDate': 0,
+                                    'public': true,
+                                },
+                            ],
+                            'rooms': [
+                                {
+                                    'config': null,
+                                    'id': '6403211810685718529',
+                                    'houseId': '6403211810681524224',
+                                    'name': 'A',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '1970-01-18T16:04:04.000Z',
+                                    'updatedAt': '2018-05-18T11:57:41.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6403211810681524224',
+                                    'devices': [
                                         {
-                                            deviceId: 4445,
+                                            'id': 2341,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6403211810685718529',
+                                            'deviceId': 'YTL043000101493',
+                                            'startDate': 1526645800,
+                                            'endDate': 1526692393,
+                                            'public': false,
+                                            'createdAt': '2018-05-18T12:16:40.000Z',
+                                            'updatedAt': '2018-05-19T01:13:13.000Z',
+                                            'deletedAt': null,
+                                        },
+                                        {
+                                            'id': 2343,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6403211810685718529',
+                                            'deviceId': 'YTL043000101493',
+                                            'startDate': 1526692401,
+                                            'endDate': 0,
+                                            'public': false,
+                                            'createdAt': '2018-05-19T01:13:21.000Z',
+                                            'updatedAt': '2018-05-19T01:13:21.000Z',
+                                            'deletedAt': null,
+                                        },
+                                        {
+                                            'id': 2344,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6403211810685718529',
+                                            'deviceId': 'YTL043000101477',
+                                            'startDate': 1526692406,
+                                            'endDate': 1527049490,
+                                            'public': false,
+                                            'createdAt': '2018-05-19T01:13:26.000Z',
+                                            'updatedAt': '2018-05-23T04:24:50.000Z',
+                                            'deletedAt': null,
+                                        },
+                                        {
+                                            'id': 2345,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6403211810685718529',
+                                            'deviceId': 'YTL043000101501',
+                                            'startDate': 1526692414,
+                                            'endDate': 1527049492,
+                                            'public': false,
+                                            'createdAt': '2018-05-19T01:13:34.000Z',
+                                            'updatedAt': '2018-05-23T04:24:52.000Z',
+                                            'deletedAt': null,
                                         },
                                     ],
-                                    houseId: 1,
                                 },
                                 {
-                                    id: 3324,
-                                    houseId: 1,
-                                }],
+                                    'config': null,
+                                    'id': '6403211810685718530',
+                                    'houseId': '6403211810681524224',
+                                    'name': 'B',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '1970-01-18T16:04:04.000Z',
+                                    'updatedAt': '2018-05-18T11:57:41.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6403211810681524224',
+                                    'devices': [
+                                        {
+                                            'id': 2346,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6403211810685718530',
+                                            'deviceId': 'YTL043000101501',
+                                            'startDate': 1527602294,
+                                            'endDate': 0,
+                                            'public': false,
+                                            'createdAt': '2018-05-29T13:58:14.000Z',
+                                            'updatedAt': '2018-05-29T13:58:14.000Z',
+                                            'deletedAt': null,
+                                        },
+                                    ],
+                                },
+                                {
+                                    'config': null,
+                                    'id': '6404147530237612032',
+                                    'houseId': '6403211810681524224',
+                                    'name': '3',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '2018-05-21T01:55:54.000Z',
+                                    'updatedAt': '2018-05-21T01:55:54.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6403211810681524224',
+                                    'devices': [
+                                        {
+                                            'id': 2347,
+                                            'projectId': '6376305154160988160',
+                                            'sourceId': '6404147530237612032',
+                                            'deviceId': 'YTL043000101477',
+                                            'startDate': 1527602512,
+                                            'endDate': 0,
+                                            'public': false,
+                                            'createdAt': '2018-05-29T14:01:52.000Z',
+                                            'updatedAt': '2018-05-29T14:01:52.000Z',
+                                            'deletedAt': null,
+                                        },
+                                    ],
+                                },
+                            ],
                         }),
+                    },
+                    {
+                        toJSON: () => ({
+                            'config': null,
+                            'id': '6404147798916337664',
+                            'houseFormat': 'SHARE',
+                            'projectId': '6376305154160988160',
+                            'buildingId': '6404147798899560448',
+                            'code': '123',
+                            'layoutId': 0,
+                            'roomNumber': '1',
+                            'currentFloor': 12,
+                            'houseKeeper': 15,
+                            'desc': '',
+                            'status': 'OPEN',
+                            'createdAt': 1526867818,
+                            'deleteAt': 0,
+                            'BuildingId': '6404147798899560448',
+                            'prices': [
+                                {
+                                    'houseId': '6404147798916337664',
+                                    'category': 'CLIENT',
+                                    'type': 'ELECTRIC',
+                                    'price': 100000,
+                                },
+                            ],
+                            'devices': [],
+                            'rooms': [
+                                {
+                                    'config': null,
+                                    'id': '6404147798916337666',
+                                    'houseId': '6404147798916337664',
+                                    'name': 'A',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '1970-01-18T16:07:47.000Z',
+                                    'updatedAt': '2018-05-21T01:56:58.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6404147798916337664',
+                                    'devices': [],
+                                },
+                                {
+                                    'config': null,
+                                    'id': '6404147798916337667',
+                                    'houseId': '6404147798916337664',
+                                    'name': 'B',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '1970-01-18T16:07:47.000Z',
+                                    'updatedAt': '2018-05-21T01:56:58.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6404147798916337664',
+                                    'devices': [],
+                                },
+                            ],
+                        }),
+                    }, {
+                        toJSON: () => ({
+                            'config': null,
+                            'id': '6404215007512498176',
+                            'houseFormat': 'SOLE',
+                            'projectId': '6376305154160988160',
+                            'buildingId': '6404215007499915264',
+                            'code': '2101',
+                            'layoutId': 0,
+                            'roomNumber': '1',
+                            'currentFloor': 1,
+                            'houseKeeper': 15,
+                            'desc': '',
+                            'status': 'OPEN',
+                            'createdAt': 1526883842,
+                            'deleteAt': 0,
+                            'BuildingId': '6404215007499915264',
+                            'prices': [],
+                            'devices': [],
+                            'rooms': [
+                                {
+                                    'config': null,
+                                    'id': '6404215007512498178',
+                                    'houseId': '6404215007512498176',
+                                    'name': 'A',
+                                    'people': 0,
+                                    'type': '',
+                                    'roomArea': 0,
+                                    'orientation': 'N',
+                                    'createdAt': '1970-01-18T16:08:03.000Z',
+                                    'updatedAt': '2018-05-21T06:24:02.000Z',
+                                    'deletedAt': null,
+                                    'HouseId': '6404215007512498176',
+                                    'devices': [],
+                                },
+                            ],
+                        }
+                        ),
                     }],
             },
             DeviceHeartbeats: {
-                findAll: async () => [
-                    {
-                        toJSON: () => ({
-                            deviceId: 4444,
-                            startScale: 0,
-                            endScale: 0,
-                        }),
-                    }, {
-                        toJSON: () => ({
-                            deviceId: 4445,
-                            startScale: 100,
-                            endScale: 100,
-                        }),
-                    }, {
-                        toJSON: () => ({
-                            deviceId: 1119,
-                            startScale: 0,
-                            endScale: 10,
-                        }),
-                    }, {
-                        toJSON: () => ({
-                            deviceId: 4446,
-                            startScale: 200,
-                            endScale: 200,
-                        }),
-                    }],
+                findAll: async () => [],
             },
             Contracts: {
                 findAll: async () => [
                     {
                         toJSON: () => ({
-                            id: 443,
-                            roomId: 3322,
-                            room: {
-                                id: 3322,
-                                houseId: 1,
-                                devices: [
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 120,
+                                    'configId': 1041,
+                                    'pattern': 'prepaid',
+                                },
+                                {
+                                    'rent': 100,
+                                    'configId': 1043,
+                                    'pattern': 'prepaid',
+                                    'frequency': 'day',
+                                },
+                            ],
+                            'id': '6403212239540719616',
+                            'roomId': '6403211810685718529',
+                            'userId': '6403212239486193664',
+                            'room': {
+                                'config': null,
+                                'id': '6403211810685718529',
+                                'houseId': '6403211810681524224',
+                                'name': 'A',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:04:04.000Z',
+                                'updatedAt': '2018-05-18T11:57:41.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6403211810681524224',
+                                'devices': [
                                     {
-                                        deviceId: 4444,
+                                        'id': 2343,
+                                        'projectId': '6376305154160988160',
+                                        'sourceId': '6403211810685718529',
+                                        'deviceId': 'YTL043000101493',
+                                        'startDate': 1526692401,
+                                        'endDate': 0,
+                                        'public': false,
+                                        'createdAt': '2018-05-19T01:13:21.000Z',
+                                        'updatedAt': '2018-05-19T01:13:21.000Z',
+                                        'deletedAt': null,
                                     },
                                 ],
                             },
-                            expenses: [],
-                            userId: 33221,
                         }),
-                    }, {
+                    },
+                    {
                         toJSON: () => ({
-                            id: 1443,
-                            roomId: 3323,
-                            room: {
-                                id: 3323,
-                                houseId: 1,
-                                devices: [
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 100,
+                                    'configId': 1043,
+                                    'pattern': 'prepaid',
+                                },
+                                {
+                                    'rent': 150,
+                                    'configId': 1051,
+                                    'pattern': 'prepaid',
+                                },
+                            ],
+                            'id': '6407228351379017728',
+                            'roomId': '6403211810685718530',
+                            'userId': '6407228351299325952',
+                            'room': {
+                                'config': null,
+                                'id': '6403211810685718530',
+                                'houseId': '6403211810681524224',
+                                'name': 'B',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:04:04.000Z',
+                                'updatedAt': '2018-05-18T11:57:41.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6403211810681524224',
+                                'devices': [
                                     {
-                                        deviceId: 4445,
+                                        'id': 2346,
+                                        'projectId': '6376305154160988160',
+                                        'sourceId': '6403211810685718530',
+                                        'deviceId': 'YTL043000101501',
+                                        'startDate': 1527602294,
+                                        'endDate': 0,
+                                        'public': false,
+                                        'createdAt': '2018-05-29T13:58:14.000Z',
+                                        'updatedAt': '2018-05-29T13:58:14.000Z',
+                                        'deletedAt': null,
                                     },
                                 ],
                             },
-                            expenses: [],
-                            userId: 33222,
                         }),
                     }, {
                         toJSON: () => ({
-                            id: 2443,
-                            roomId: 3324,
-                            room: {
-                                id: 3324,
-                                houseId: 1,
-                                devices: [],
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 100,
+                                    'configId': 1043,
+                                    'pattern': 'prepaid',
+                                },
+                                {
+                                    'rent': 150,
+                                    'configId': 1044,
+                                    'pattern': 'prepaid',
+                                },
+                                {
+                                    'rent': 200,
+                                    'configId': 1047,
+                                    'pattern': 'prepaid',
+                                },
+                                {
+                                    'rent': 100,
+                                    'configId': 1049,
+                                    'pattern': 'prepaid',
+                                },
+                            ],
+                            'id': '6407229204634669056',
+                            'roomId': '6404147530237612032',
+                            'userId': '6407229204567560192',
+                            'room': {
+                                'config': null,
+                                'id': '6404147530237612032',
+                                'houseId': '6403211810681524224',
+                                'name': '3',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '2018-05-21T01:55:54.000Z',
+                                'updatedAt': '2018-05-21T01:55:54.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6403211810681524224',
+                                'devices': [
+                                    {
+                                        'id': 2347,
+                                        'projectId': '6376305154160988160',
+                                        'sourceId': '6404147530237612032',
+                                        'deviceId': 'YTL043000101477',
+                                        'startDate': 1527602512,
+                                        'endDate': 0,
+                                        'public': false,
+                                        'createdAt': '2018-05-29T14:01:52.000Z',
+                                        'updatedAt': '2018-05-29T14:01:52.000Z',
+                                        'deletedAt': null,
+                                    },
+                                ],
                             },
-                            expenses: [],
-                            userId: 33223,
                         }),
+                    }, {
+                        toJSON: () => ({
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 10000,
+                                    'configId': 1043,
+                                    'pattern': 'withRent',
+                                },
+                            ],
+                            'id': '6408158898410360832',
+                            'roomId': '6404215007512498178',
+                            'userId': '6408158898305503232',
+                            'room': {
+                                'config': null,
+                                'id': '6404215007512498178',
+                                'houseId': '6404215007512498176',
+                                'name': 'A',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:08:03.000Z',
+                                'updatedAt': '2018-05-21T06:24:02.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6404215007512498176',
+                                'devices': [],
+                            },
+                        }),
+                    }, {
+                        toJSON: () => ({
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 900,
+                                    'configId': 1043,
+                                    'pattern': 'withRent',
+                                },
+                            ],
+                            'id': '6408159540944179200',
+                            'roomId': '6404147798916337666',
+                            'userId': '6408159540881264640',
+                            'room': {
+                                'config': null,
+                                'id': '6404147798916337666',
+                                'houseId': '6404147798916337664',
+                                'name': 'A',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:07:47.000Z',
+                                'updatedAt': '2018-05-21T01:56:58.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6404147798916337664',
+                                'devices': [],
+                            },
+                        }),
+                    }, {
+                        toJSON: () => ({
+                            'strategy': {},
+                            'expenses': [
+                                {
+                                    'rent': 2200,
+                                    'configId': 1043,
+                                    'pattern': 'withRent',
+                                },
+                            ],
+                            'id': '6408165370619891712',
+                            'roomId': '6404147798916337667',
+                            'userId': '6408165370515034112',
+                            'room': {
+                                'config': null,
+                                'id': '6404147798916337667',
+                                'houseId': '6404147798916337664',
+                                'name': 'B',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:07:47.000Z',
+                                'updatedAt': '2018-05-21T01:56:58.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6404147798916337664',
+                                'devices': [],
+                            },
+                        }),
+                    }, {
+                        toJSON: () => ({
+                            'strategy': {},
+                            'expenses': [],
+                            'id': '6408244767330799616',
+                            'roomId': '6404147798916337667',
+                            'userId': '6408244767238524928',
+                            'room': {
+                                'config': null,
+                                'id': '6404147798916337667',
+                                'houseId': '6404147798916337664',
+                                'name': 'B',
+                                'people': 0,
+                                'type': '',
+                                'roomArea': 0,
+                                'orientation': 'N',
+                                'createdAt': '1970-01-18T16:07:47.000Z',
+                                'updatedAt': '2018-05-21T01:56:58.000Z',
+                                'deletedAt': null,
+                                'HouseId': '6404147798916337664',
+                                'devices': [],
+                            },
+                        }
+                        ),
                     }],
             },
             CashAccount: {
@@ -1596,62 +2237,62 @@ describe('DeviceDailyBills', function() {
             prePaidFlowsCreateSpy.should.have.been.called;
             devicePrePaidCreateSpy.getCall(0).args[0].should.be.eql(
                 {
-                    amount: -3400,
-                    contractId: 443,
+                    amount: -0,
+                    contractId: '6403212239540719616',
                     createdAt: 2018,
-                    deviceId: 1119,
+                    deviceId: 'YTL043000101519',
                     flowId: 444222,
                     id: 444222,
                     paymentDay: 2018,
-                    price: 1000,
+                    price: 120,
                     projectId: 1,
-                    scale: 100000,
+                    scale: 0,
                     share: 34,
                     type: 'ELECTRICITY',
-                    usage: 100000,
+                    usage: 0,
                 });
             devicePrePaidCreateSpy.getCall(1).args[0].should.be.eql(
                 {
-                    amount: -3300,
-                    contractId: 1443,
+                    amount: -0,
+                    contractId: '6407228351379017728',
                     createdAt: 2018,
-                    deviceId: 1119,
+                    deviceId: 'YTL043000101519',
                     flowId: 444222,
                     id: 444222,
                     paymentDay: 2018,
-                    price: 1000,
+                    price: 120,
                     projectId: 1,
-                    scale: 100000,
+                    scale: 0,
                     share: 33,
                     type: 'ELECTRICITY',
-                    usage: 100000,
+                    usage: 0,
                 });
             devicePrePaidCreateSpy.getCall(2).args[0].should.be.eql(
                 {
-                    amount: -3300,
-                    contractId: 2443,
+                    amount: -0,
+                    contractId: '6407229204634669056',
                     createdAt: 2018,
-                    deviceId: 1119,
+                    deviceId: 'YTL043000101519',
                     flowId: 444222,
                     id: 444222,
                     paymentDay: 2018,
-                    price: 1000,
+                    price: 120,
                     projectId: 1,
-                    scale: 100000,
                     share: 33,
+                    scale: 0,
                     type: 'ELECTRICITY',
-                    usage: 100000,
+                    usage: 0,
                 });
             devicePrePaidCreateSpy.getCall(3).args[0].should.be.eql(
                 {
                     amount: -0,
-                    contractId: 443,
+                    contractId: '6403212239540719616',
                     createdAt: 2018,
-                    deviceId: 4444,
+                    deviceId: 'YTL043000101493',
                     flowId: 444222,
                     id: 444222,
                     paymentDay: 2018,
-                    price: 1000,
+                    price: 120,
                     projectId: 1,
                     scale: 0,
                     type: 'ELECTRICITY',
@@ -1660,22 +2301,36 @@ describe('DeviceDailyBills', function() {
             devicePrePaidCreateSpy.getCall(4).args[0].should.be.eql(
                 {
                     amount: -0,
-                    contractId: 1443,
+                    contractId: '6407228351379017728',
                     createdAt: 2018,
-                    deviceId: 4445,
+                    deviceId: 'YTL043000101501',
                     flowId: 444222,
                     id: 444222,
                     paymentDay: 2018,
-                    price: 1000,
+                    price: 120,
                     projectId: 1,
-                    scale: 1000000,
+                    scale: 0,
+                    type: 'ELECTRICITY',
+                    usage: 0,
+                });
+            devicePrePaidCreateSpy.getCall(5).args[0].should.be.eql(
+                {
+                    amount: -0,
+                    contractId: '6407229204634669056',
+                    createdAt: 2018,
+                    deviceId: 'YTL043000101477',
+                    flowId: 444222,
+                    id: 444222,
+                    paymentDay: 2018,
+                    price: 120,
+                    projectId: 1,
+                    scale: 0,
                     type: 'ELECTRICITY',
                     usage: 0,
                 });
         });
 
     });
-
     it('should handle pay exception', async () => {
     });
     it('should handle changing price ???', async () => {

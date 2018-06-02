@@ -38,7 +38,9 @@ const generateProject = dailyTo => async projectId => {
                 const deviceId2ElectricityPrice = devicesWithItsPrice(
                     houses);
                 const deviceIdDic = houseIdOfDevices(houses);
-                const deviceIds = allDeviceIds(houses);
+                const deviceIds = fp.filter(
+                    fp.pipe(fp.getOr(0)('endDate'), fp.eq(0)))(
+                    allDeviceIds(houses));
                 const roomId2Contract = fp.groupBy('roomId')(contracts);
                 const contractedRooms = fp.flatten(
                     fp.map(fp.pipe(fp.get('rooms'),
@@ -48,11 +50,9 @@ const generateProject = dailyTo => async projectId => {
                         houses));
                 const house2ContractedRoom = fp.groupBy('houseId')(
                     contractedRooms);
-
                 const house2Contract = fp.mapValues(
                     fp.flatMap(contract => fp.get(fp.get('id')(contract))(
                         roomId2Contract)))(house2ContractedRoom);
-
                 return heartbeatInProject(MySQL)(dailyFrom,
                     dailyTo.unix(),
                     projectId).
@@ -98,7 +98,7 @@ const devicesWithHeartbeats = (devicesWithPrice, heartbeats) => {
 };
 
 const payDevice = MySQL => async (devicePrePaid, room) => {
-    const {userId, id: roomId, projectId} = room;
+    const {userId, roomId, projectId} = room;
     const flowId = Util.newId();
     const prePaidObj = fp.assign(devicePrePaid,
         {id: Util.newId(), flowId: flowId});
@@ -108,8 +108,8 @@ const payDevice = MySQL => async (devicePrePaid, room) => {
     return Util.PayWithOwed(userId, prePaidObj.amount).then(
         ret => {
             if (ret.code !== ErrorCode.OK) {
-                log.error('PayWithOwed in device daily failed', userId,
-                    prePaidObj, roomId, ret);
+                log.error(`PayWithOwed in device daily failed: userId ${userId},
+                    prePaidObj: ${prePaidObj}, roomId: ${roomId}, ret = ${ret}`);
                 return;
             }
 
@@ -304,10 +304,10 @@ const singleDeviceProcess = MySQL =>
             deviceId2ElectricityPrice, deviceIdDic)(
             reading);
 
-        const houseId = deviceIdDic(reading.deviceId).id;
+        const {houseId, 'public': isSharing, roomId: privateRoomId} = device;
         const contractOfRoom = searchRoomInHouse(house2Contract[houseId]);
 
-        if (device.public) {
+        if (isSharing) {
             //公区表
             const apportionments = fp.toPairs(
                 getApportionment(houseApportionment, house2Contract)(
@@ -332,12 +332,12 @@ const singleDeviceProcess = MySQL =>
             return;
         }
 
-        //私有表
-        const room = contractOfRoom(device.roomId);
-        if(fp.isEmpty(room)) {
+        const contract = contractOfRoom(privateRoomId);
+        if(fp.isEmpty(contract)) {
             return;
         }
-        const {id: contractId, userId} = room;
+        //私有表
+        const {id: contractId, userId} = contract;
         return !device.public && payDevice(MySQL)({
             type: 'ELECTRICITY',
             contractId,
