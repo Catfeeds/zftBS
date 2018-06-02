@@ -21,32 +21,6 @@ const generateProject = dailyTo => async projectId => {
             const houseIds = fp.uniq(fp.compact(
                 fp.map(fp.get('room.houseId'))(contracts)));
 
-            let houseId2Rooms = {};
-            let deviceId2Room = {};
-            fp.each(contract => {
-                if (!contract.room) {
-                    return;
-                }
-                //todo: 是否合同生效当天就进行计费
-                const roomExtension = fp.assign({
-                    projectId,
-                    contractId: contract.id,
-                    userId: contract.userId,
-                });
-                const houseId = contract.room.houseId;
-
-                if (!houseId2Rooms[houseId]) {
-                    houseId2Rooms[houseId] = [];
-                }
-                houseId2Rooms[houseId].push(roomExtension(contract.room));
-
-                fp.each(device => {
-                    deviceId2Room[device.deviceId] = roomExtension(
-                        contract.room);
-                })(contract.room.devices);
-
-            })(contracts);
-
             return Promise.all([
                 Util.getHouses(projectId, dailyTo, 'CLIENT', houseIds).
                     then(fp.map(a => a.toJSON())),
@@ -84,11 +58,9 @@ const generateProject = dailyTo => async projectId => {
                     projectId).
                     then(billOnHeartbeats(MySQL)({
                         deviceIds,
-                        deviceId2Room,
                         houseApportionment,
                         deviceId2ElectricityPrice,
                         deviceIdDic,
-                        houseId2Rooms,
                         projectId,
                         paymentDay,
                         house2Contract,
@@ -281,7 +253,7 @@ const allDeviceIds = houses => fp.flatten(fp.map(house => {
         fp.defaults({public: true, houseId: house.id}))(
         house.devices);
     const devicesInRooms = fp.map(
-        room => fp.map(fp.defaults({public: false, houseId: room.houseId}))(
+        room => fp.map(fp.defaults({public: false, roomId: room.id, houseId: room.houseId}))(
             fp.get('devices')(room)))(house.rooms);
     return fp.flatten([publicDevices, fp.flatten(devicesInRooms)]);
 })(houses));
@@ -306,7 +278,7 @@ const getApportionment = (houseApportionment, houseId2Rooms) => houseId => {
     return apportionment ?
         apportionment :
         Util.autoApportionment(
-            fp.map('id')(houseId2Rooms[houseId]));
+            fp.map('roomId')(houseId2Rooms[houseId]));
 };
 
 const billOnHeartbeats = MySQL => dataMap => heartbeats => {
@@ -316,29 +288,31 @@ const billOnHeartbeats = MySQL => dataMap => heartbeats => {
 
 const singleDeviceProcess = MySQL =>
     ({
-        deviceIds, deviceId2Room,
+        deviceIds,
         houseApportionment,
         deviceId2ElectricityPrice,
-        deviceIdDic, houseId2Rooms,
+        deviceIdDic,
         projectId, paymentDay, house2Contract,
     }) => reading => {
-
         const device = fp.find(
             fp.pipe(fp.get('deviceId'), fp.eq(reading.deviceId)))(
             deviceIds);
+        if (fp.isEmpty(device)) {
+            return;
+        }
         const amountAndPrice = getAmountAndPrice(
             deviceId2ElectricityPrice, deviceIdDic)(
             reading);
 
+        const houseId = deviceIdDic(reading.deviceId).id;
+        const contractOfRoom = searchRoomInHouse(house2Contract[houseId]);
+
         if (device.public) {
-            const houseId = deviceIdDic(reading.deviceId).id;
             //公区表
             const apportionments = fp.toPairs(
-                getApportionment(houseApportionment, houseId2Rooms)(
+                getApportionment(houseApportionment, house2Contract)(
                     device.houseId));
 
-            const contractOfRoom = searchRoomInHouse(house2Contract[houseId]);
-            
             fp.each(([roomId, percent]) => {
                 const {id: contractId, userId} = contractOfRoom(roomId);
                 payDevice(MySQL)({
@@ -355,13 +329,18 @@ const singleDeviceProcess = MySQL =>
                     createdAt: moment().unix(),
                 }, fp.defaults({userId, projectId})(device));
             })(apportionments);
+            return;
         }
 
         //私有表
-        const room = deviceId2Room[reading.deviceId];
-        return room && payDevice(MySQL)({
+        const room = contractOfRoom(device.roomId);
+        if(fp.isEmpty(room)) {
+            return;
+        }
+        const {id: contractId, userId} = room;
+        return !device.public && payDevice(MySQL)({
             type: 'ELECTRICITY',
-            contractId: room.contractId,
+            contractId,
             projectId,
             deviceId: reading.deviceId,
             amount: -amountAndPrice.amount,
@@ -370,7 +349,7 @@ const singleDeviceProcess = MySQL =>
             price: amountAndPrice.price,
             paymentDay,
             createdAt: moment().unix(),
-        }, room);
+        }, fp.defaults({userId, projectId})(device));
 
     };
 
