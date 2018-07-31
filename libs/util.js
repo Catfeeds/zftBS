@@ -90,7 +90,9 @@ exports.getHouses = async(projectId, time, category, houseIds)=>{
                 model: MySQL.HouseDevicePrice,
                 as: 'prices',
                 where:{
-                    category: category
+                    projectId,
+                    category,
+                    endDate: 0
                 },
                 required: false,
                 attributes: ['houseId', 'category', 'type', 'price']
